@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#059669">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AgroGestión">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icono.svg">
+  <link rel="apple-touch-icon" href="icono.svg">
+  <title>AgroGestión Pro - Sistema Ejecutivo de Gerencia y Control Logístico</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans, Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03);
+      --shadow-card-hover: 0 10px 25px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(16, 185, 129, 0.06);
+      --shadow-float: 0 20px 40px -12px rgba(15, 23, 42, 0.18);
+    }
+    html, body {
+      max-width: 100vw;
+      overflow-x: hidden;
+      position: relative;
+    }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+      -webkit-tap-highlight-color: transparent;
+      padding-bottom: env(safe-area-inset-bottom);
+      font-variant-numeric: tabular-nums;
+      background-color: #f4f7f9;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 45%),
+        radial-gradient(at 100% 0%, rgba(79, 70, 229, 0.06) 0px, transparent 45%),
+        radial-gradient(at 50% 100%, rgba(13, 148, 136, 0.05) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    .font-mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    /* Superficies y tarjetas de diseño ejecutivo */
+    .surface-card {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      box-shadow: var(--shadow-card);
+      transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+    }
+    .surface-card:hover {
+      box-shadow: var(--shadow-card-hover);
+    }
+    .surface-glass {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+    }
+
+    /* Animación suave para apertura de modales y paneles */
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(10px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    #modalGestionPrecios > div,
+    #modalConfirmarLimpiar > div,
+    #modalSeleccionPerfil > div,
+    #modalBuzonEntregas > div,
+    #modalCelular > div,
+    #modalAlertaQuincenalMC > div,
+    #modalLoginSeguridad > div,
+    #modalProveedorNoAgregado > div,
+    #modalConfirmacionWhatsAppTercero > div,
+    #modalHistoricoSQL > div,
+    #panelPedidoProveedor {
+      animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Scrollbars minimalistas */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    /* Prevenir auto-zoom molesto en iOS Safari y mejorar foco */
+    input, select, textarea {
+      font-size: 16px !important;
+      font-variant-numeric: tabular-nums;
+      transition: all 0.15s ease;
+    }
+    input:focus, select:focus, textarea:focus {
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
+    }
+    @media (min-width: 640px) {
+      input, select, textarea {
+        font-size: 13px !important;
+      }
+    }
+
+    /* Micro-interacción en botones */
+    button {
+      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* En pantallas grandes (Desktop), ambas secciones son visibles en dos columnas */
+    @media (min-width: 1024px) {
+      #seccionCaptura, #seccionBorrador {
+        display: block !important;
+      }
+      #barraInferiorMobile {
+        display: none !important;
+      }
+    }
+
+    /* Estilos Oficiales para Impresión y PDF Corporativo */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      header, #barraInferiorMobile, #contenedorSemaforo, #panelProveedoresPorProducto,
+      #seccionCaptura, #panelResumenGerencia, #seccionBorrador, nav, button, .no-print,
+      #modalSeleccionPerfil, #modalBuzonEntregas, #modalCelular, #modalConfirmarLimpiar, #modalGestionPrecios {
+        display: none !important;
+      }
+      #vistaImprimibleOficial {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body class="text-slate-900 min-h-screen antialiased flex flex-col selection:bg-emerald-500 selection:text-white">
+
+  <!-- CINTA SUPERIOR DE IDENTIDAD VISUAL CORPORATIVA -->
+  <div class="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 sticky top-0 z-50 no-print"></div>
+
+  <!-- ENCABEZADO SUPERIOR MÓVIL Y DESKTOP (DISEÑO PREMIUM GLASSMORPHISM) -->
+  <header class="surface-glass border-b border-slate-200/80 sticky top-1 z-40 shadow-xs no-print w-full max-w-full overflow-hidden">
+    <div class="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-2 sm:py-2.5 space-y-2">
+      
+      <!-- Fila 1: Logo + Perfil + Accesos de Gerencia -->
+      <div class="flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
+        
+        <!-- Logo y Nombre -->
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white flex items-center justify-center font-black text-base sm:text-xl shadow-md shadow-emerald-600/20 ring-1 ring-white/40 shrink-0">
+            🌱
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <h1 class="text-xs sm:text-lg font-extrabold text-slate-900 tracking-tight leading-none whitespace-nowrap">AgroGestión Pro</h1>
+              <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200/80 shadow-2xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> v5.3 Enterprise
+              </span>
+            </div>
+            <p class="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 hidden sm:block truncate">Abastecimiento Agrícola, Control de Precios y Despachos</p>
+          </div>
+        </div>
+
+        <!-- Perfil Activo, Buzón y Acceso a Gerencia -->
+        <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+          
+          <!-- Botón Acceso Rápido a Gerencia -->
+          <button type="button" onclick="seleccionarPerfilUsuario('admin')" class="text-xs bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 p-1.5 sm:px-3 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 sm:gap-1.5 shadow-sm shadow-amber-500/20 border border-amber-500/40 active:scale-95" title="Panel de Gerencia / Administración">
+            <span>👑</span> <span class="hidden sm:inline">Gerencia</span>
+          </button>
+
+          <!-- Botón Alerta Corte 1 y 16 (Señora MC / Gerencia) -->
+          <button type="button" id="btnAlertaQuincenalHeader" onclick="abrirModalAlertaQuincenalMC(true)" class="text-xs bg-gradient-to-b from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-xs active:scale-95 hidden" title="Alerta Quincenal Días 1 y 16: Actualización de Precios">
+            <span>🔔</span> <span class="hidden md:inline">Corte 1 y 16</span>
+          </button>
+
+          <!-- Chip de Usuario Activo -->
+          <button type="button" onclick="abrirModalSeleccionPerfil()" class="flex items-center gap-1 sm:gap-2 bg-white hover:bg-emerald-50/70 border border-slate-200/90 hover:border-emerald-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl transition shadow-2xs active:scale-95" title="Cambiar negociador">
+            <span class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-[11px] sm:text-xs flex items-center justify-center shadow-2xs shrink-0">👤</span>
+            <div class="text-left min-w-0">
+              <p id="lblPerfilActivoNombre" class="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate max-w-[55px] sm:max-w-none">Camilo Romero</p>
+              <p id="lblPerfilActivoRol" class="text-[9px] sm:text-[10px] text-emerald-700 font-bold leading-tight mt-0.5 hidden sm:block">Negociador</p>
+            </div>
+            <span class="text-[10px] text-slate-400 font-bold ml-0.5">▾</span>
+          </button>
+
+          <!-- Botón Estado de Sincronización en la Nube Multidispositivo -->
+          <button type="button" id="btnCloudSyncHeader" onclick="sincronizarNubeManual()" class="text-xs bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-2xs active:scale-95" title="Sincronización automática entre celulares y computadores por perfil (Clic para sincronizar ahora)">
+            <span id="iconoCloudSync">☁️</span> <span id="lblEstadoCloudSync" class="hidden md:inline">Sincronizado</span>
+          </button>
+
+          <!-- Botón Seguridad y Contraseñas -->
+          <button type="button" onclick="abrirModalSeguridad()" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/90 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs active:scale-95" title="Seguridad, Contraseñas y Auditoría">
+            <span>🔒</span> <span class="hidden lg:inline">Seguridad</span>
+          </button>
+
+          <!-- Botón Base SQL e Histórico (Exclusivo Gerencia) -->
+          <button type="button" id="btnSqlHeader" onclick="abrirModalHistoricoSQL()" class="max-sm:hidden hidden sm:inline-flex text-xs bg-gradient-to-b from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl font-black transition items-center gap-1 shadow-xs active:scale-95" title="Base de Datos SQL e Histórico Multifecha (Gerencia)">
+            <span>🗄️</span> <span class="hidden sm:inline">Base SQL</span>
+          </button>
+
+          <!-- Botón Buzón de Entregas (Exclusivo Gerencia) -->
+          <button type="button" id="btnBuzonHeader" onclick="abrirModalBuzon()" class="max-sm:hidden hidden sm:inline-flex text-xs bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl font-bold transition items-center gap-1 shadow-xs active:scale-95" title="Buzón central de entregas (Gerencia)">
+            <span>📦</span> <span class="hidden sm:inline">Buzón</span>
+          </button>
+
+          <!-- Botón Celular -->
+          <button type="button" onclick="abrirModalCelular()" class="hidden sm:inline-flex text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-bold transition items-center gap-1 shadow-xs active:scale-95" title="Enlace para Celular">
+            <span>📱</span>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Fila 2: Selector de Fecha Ergonómico con Flechas Rápidas -->
+      <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60">
+        
+        <div class="flex items-center bg-slate-100/90 rounded-xl p-0.5 border border-slate-200/80 shadow-inner">
+          <!-- Día anterior -->
+          <button type="button" onclick="cambiarFechaRelativa(-1)" class="w-7 h-7 sm:w-8 sm:h-7 flex items-center justify-center text-slate-600 hover:text-slate-950 font-black text-xs rounded-lg hover:bg-white hover:shadow-2xs transition active:scale-95" title="Día anterior">
+            ◀
+          </button>
+          
+          <!-- Input Date -->
+          <input type="date" id="inputFecha" class="bg-transparent text-xs font-extrabold text-slate-800 outline-none cursor-pointer px-1 sm:px-2 text-center max-w-[130px] sm:max-w-none">
+          
+          <!-- Día siguiente -->
+          <button type="button" onclick="cambiarFechaRelativa(1)" class="w-7 h-7 sm:w-8 sm:h-7 flex items-center justify-center text-slate-600 hover:text-slate-950 font-black text-xs rounded-lg hover:bg-white hover:shadow-2xs transition active:scale-95" title="Día siguiente">
+            ▶
+          </button>
+        </div>
+
+        <!-- Botón Día de la Semana / Volver a Hoy -->
+        <button type="button" id="badgeDiaSemana" onclick="irAHoy()" class="font-extrabold text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/80 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition active:scale-95 flex items-center gap-1.5 shadow-2xs truncate" title="Clic para ir a la fecha de hoy">
+          📅 Hoy
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 w-full flex-1 space-y-4 pb-24 lg:pb-10 no-print">
+
+    <!-- ========================================== -->
+    <!-- 👑 BARRA EJECUTIVA DE GERENCIA (SOLO ACTIVA CON GERENCIA) -->
+    <!-- ========================================== -->
+    <section id="panelResumenGerencia" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white rounded-3xl p-4 sm:p-5 shadow-xl border border-slate-700/80 ring-1 ring-amber-500/20 space-y-3 hidden">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-500/30 text-amber-400 font-black text-xl flex items-center justify-center border border-amber-400/40 shadow-inner">👑</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm sm:text-base font-extrabold text-white tracking-tight">Centro de Comando de Gerencia General</h2>
+              <span class="text-[9px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">Acceso Total</span>
+            </div>
+            <p class="text-[11px] text-slate-400">Supervisión consolidada multidispositivo, tarifas mensuales, base SQL y actas oficiales</p>
+          </div>
+        </div>
+
+        <!-- Botones de Alto Impacto Ejecutivo -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filtro Rápido por Perfil en Gerencia -->
+          <div class="flex items-center bg-slate-950/80 rounded-xl p-1 border border-slate-700/80 text-[11px] shadow-inner">
+            <button type="button" id="btnFiltroGerenciaTodos" onclick="filtrarVistaGerenciaPorPerfil('todos')" class="px-2.5 py-1 rounded-lg font-black bg-amber-500 text-slate-950 transition">Todos</button>
+            <button type="button" id="btnFiltroGerenciaCamilo" onclick="filtrarVistaGerenciaPorPerfil('camilo')" class="px-2.5 py-1 rounded-lg font-bold text-slate-300 hover:text-white transition">Camilo</button>
+            <button type="button" id="btnFiltroGerenciaClaudia" onclick="filtrarVistaGerenciaPorPerfil('claudia')" class="px-2.5 py-1 rounded-lg font-bold text-slate-300 hover:text-white transition">Claudia</button>
+          </div>
+
+          <button type="button" onclick="abrirModalHistoricoSQL()" class="bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-black px-3.5 py-2 rounded-xl text-xs transition shadow-sm shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95">
+            <span>🗄️</span> Base SQL e Histórico
+          </button>
+          <button type="button" onclick="copiarResumenEjecutivoWhatsApp()" class="bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-sm shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95">
+            <span>📊</span> WhatsApp Dirección
+          </button>
+          <button type="button" onclick="imprimirActaOficialGerencia()" class="bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition shadow-sm shadow-blue-500/20 flex items-center gap-1.5 active:scale-95">
+            <span>🖨️</span> PDF Oficial
+          </button>
+          <button type="button" onclick="abrirModalGestionPrecios()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95">
+            <span>⚙️</span> Precios Mensuales
+          </button>
+          <button type="button" onclick="abrirModalAlertaQuincenalMC(true)" class="bg-teal-700 hover:bg-teal-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95">
+            <span>🔔</span> Corte 1 y 16 (MC)
+          </button>
+          <button type="button" onclick="abrirModalSeguridad()" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95">
+            <span>🛡️</span> Claves
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEMÁFORO DE COBERTURA DIARIA DE PRODUCTOS (ACORDEÓN ERGONÓMICO) -->
+    <div class="surface-card rounded-3xl p-3.5 sm:p-4 space-y-3">
+      
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 cursor-pointer" onclick="toggleSemaforoMobile()">
+          <span class="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-base shadow-2xs">🥦</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xs sm:text-sm font-extrabold text-slate-900">Cobertura y Portafolio de Productos Hoy</h2>
+              <span id="lblSemaforoResumen" class="text-[10px] sm:text-[11px] font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/90">
+                0 Pedidos
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 hidden sm:block">Toca cualquier hortaliza para ver qué agricultores la tienen pactada y su precio</p>
+          </div>
+        </div>
+        <button type="button" onclick="toggleSemaforoMobile()" class="text-xs text-slate-600 hover:text-slate-950 font-bold bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200/80 px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1.5">
+          <span id="lblIconoSemaforo">▼</span> <span class="hidden sm:inline">Portafolio</span>
+        </button>
+      </div>
+
+      <!-- FILTRO DIRECTO POR PRODUCTO / HORTALIZA -->
+      <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+        <span class="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
+          <span class="text-emerald-600">🎯</span> Buscar por Producto:
+        </span>
+        <select id="selectFiltroProducto" onchange="filtrarPorProducto(this.value)" class="flex-1 min-w-[200px] h-11 bg-slate-50/90 hover:bg-white border border-slate-300/90 rounded-xl px-3.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition cursor-pointer shadow-2xs">
+          <option value="">-- Selecciona un producto para comparar proveedores y precios --</option>
+        </select>
+      </div>
+
+      <!-- Chips del semáforo -->
+      <div id="contenedorSemaforo" class="flex flex-wrap gap-1.5 items-center pt-0.5">
+        <!-- Se llena dinámicamente -->
+      </div>
+    </div>
+
+    <!-- PANEL DESPLEGABLE: PROVEEDORES DISPONIBLES PARA EL PRODUCTO SELECCIONADO -->
+    <div id="panelProveedoresPorProducto" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white rounded-3xl p-4 sm:p-5 shadow-2xl hidden space-y-3.5 border-2 border-emerald-500/90 transition-all">
+      <div class="flex items-center justify-between border-b border-slate-700/80 pb-2.5">
+        <div class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-xl">🛒</span>
+          <div>
+            <h3 class="font-extrabold text-xs sm:text-base text-white flex items-center gap-1.5">
+              Agricultores Disponibles para: <span id="lblProductoFiltradoTitulo" class="text-emerald-400 font-black underline decoration-emerald-500/50"></span>
+            </h3>
+            <p class="text-[10px] sm:text-xs text-slate-300">Ordenados inteligentemente: 1° Entregan hoy • 2° Mejor tarifa pactada</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarPanelProveedoresPorProducto()" class="text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95">
+          ✕ Cerrar
+        </button>
+      </div>
+
+      <!-- Rejilla con las tarjetas de proveedores -->
+      <div id="contenedorListaProveedoresProducto" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+        <!-- Se llena dinámicamente -->
+      </div>
+    </div>
+
+    <!-- CUADRÍCULA PRINCIPAL: CAPTURA (IZQ) Y CONSOLIDADO (DER) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      
+      <!-- ========================================== -->
+      <!-- COLUMNA IZQUIERDA: CAPTURA DE PEDIDO (TAB 1) -->
+      <!-- ========================================== -->
+      <section id="seccionCaptura" class="w-full lg:col-span-6 space-y-4">
+
+        <!-- BUSCADOR MANUAL DE PROVEEDORES + PEDIDO A PROVEEDOR NO AGREGADO -->
+        <div class="surface-card rounded-3xl p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 flex items-center justify-center text-xs font-black">🔍</span>
+              <label for="inputBuscarProveedor" class="block text-xs sm:text-sm font-extrabold text-slate-900">
+                Seleccionar Agricultor o Razón Social
+              </label>
+            </div>
+            <button 
+              type="button" 
+              onclick="abrirModalProveedorNoAgregado()" 
+              class="text-xs bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-black px-3.5 py-2 rounded-xl transition shadow-sm shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95"
+              title="Hacer pedido a un proveedor nuevo o no registrado en el catálogo"
+            >
+              <span>➕</span> Proveedor No Agregado
+            </button>
+          </div>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="inputBuscarProveedor" 
+              placeholder="Escribe el nombre del agricultor, razón social o producto..." 
+              autocomplete="off"
+              class="w-full h-12 pl-10 pr-4 rounded-2xl bg-slate-50/80 hover:bg-white focus:bg-white border border-slate-300/90 focus:border-emerald-500 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 transition shadow-inner"
+            >
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-base">
+              🌱
+            </div>
+            <ul id="listaSugerencias" class="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-2xl max-h-64 overflow-y-auto z-50 hidden divide-y divide-slate-100"></ul>
+          </div>
+        </div>
+
+        <!-- PANEL DE CAPTURA CON PRODUCTOS PACTADOS -->
+        <div id="panelPedidoProveedor" class="bg-white rounded-3xl border-2 border-emerald-500/90 p-4 sm:p-5 shadow-xl shadow-emerald-950/5 hidden space-y-4">
+          
+          <!-- FICHA INTEGRADA: NOMBRE + FACTURACIÓN + CANCELAR -->
+          <div class="bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20"></span>
+                <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight" id="lblProvNombre">Nombre Agricultor</span>
+                <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-extrabold">Ficha Activa</span>
+              </div>
+              <button type="button" onclick="cancelarCapturaProveedor()" class="text-slate-500 hover:text-rose-600 bg-white border border-slate-200/90 hover:border-rose-300 px-3 py-1 rounded-xl text-xs font-bold transition active:scale-95 shadow-2xs" title="Cerrar y limpiar formulario">
+                ✕ Cerrar Ficha
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-slate-600">
+              <p class="truncate">🏢 Factura a: <strong class="text-slate-900 font-extrabold" id="lblProvFactura">Razón Social</strong></p>
+              <p id="lblProvUbicacion" class="truncate">📍 Finca</p>
+              <p id="lblProvContacto" class="font-medium">📞 Contacto</p>
+              <p class="text-emerald-800 font-bold" id="lblProvEncargado">👤 Negociador Asignado</p>
+            </div>
+          </div>
+
+          <!-- ⏰ TARJETA DESTACADA: TIEMPOS DE LLEGADA Y CRONOGRAMA LOGÍSTICO -->
+          <div class="bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-emerald-50/80 border border-blue-200/90 rounded-2xl p-3.5 space-y-2.5 shadow-2xs">
+            <div class="flex items-center justify-between border-b border-blue-200/60 pb-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-base">⏰</span>
+                <h4 class="text-xs font-black text-blue-950 uppercase tracking-wider">Tiempos de Llegada y Ruta</h4>
+              </div>
+              <span class="text-[10px] font-extrabold text-blue-900 bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-2xs">
+                Programación Planta
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <!-- Hora Planta con Edición -->
+              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+                <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🏢 Llegada Planta:</span>
+                <div class="flex items-center gap-1 mt-1">
+                  <input 
+                    type="time" 
+                    id="inputHoraPlantaLlegada" 
+                    class="font-black text-sm text-blue-950 bg-blue-50/50 border border-blue-300 rounded-lg px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                    title="Hora pactada de llegada a planta para hoy"
+                  >
+                </div>
+                <span class="text-[9px] text-slate-400 mt-0.5">Editable si hay novedad</span>
+              </div>
+
+              <!-- Hora Campo / Adelantos -->
+              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+                <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🚜 Salida Campo:</span>
+                <p id="lblHoraCampo" class="font-black text-xs text-slate-800 mt-1">Directo</p>
+                <span class="text-[9px] text-slate-400 mt-0.5">Recogida finca</span>
+              </div>
+
+              <!-- Tiempo Finca -->
+              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+                <span class="block text-[10px] font-extrabold text-slate-500 uppercase">⏱️ Tiempo Finca:</span>
+                <p id="lblTiempoFinca" class="font-black text-xs text-slate-800 mt-1">30 min</p>
+                <span class="text-[9px] text-slate-400 mt-0.5">Cargue estimado</span>
+              </div>
+
+              <!-- Responsable Transporte -->
+              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+                <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🚚 Transporte:</span>
+                <p id="lblTransporte" class="font-black text-xs text-blue-800 mt-1">TERCERO</p>
+                <span class="text-[9px] text-slate-400 mt-0.5">Responsable flete</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHECKLIST DE PRODUCTOS PACTADOS -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🥬</span> Productos Pactados con este Proveedor:
+              </h4>
+              <button type="button" onclick="agregarFilaLibre()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-xl font-extrabold flex items-center gap-1 active:scale-95 transition">
+                <span>➕</span> Agregar otro producto
+              </button>
+            </div>
+
+            <div id="contenedorFilasProductos" class="space-y-3">
+              <!-- Se generan las filas dinámicas con inputs táctiles ergonómicos -->
+            </div>
+          </div>
+
+          <!-- BOTONES DE ACCIÓN DEL FORMULARIO CON BARRA DE TOTAL EN VIVO -->
+          <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 text-white rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-lg border border-slate-700/80">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Pedido de este Agricultor:</p>
+              <p id="lblGranTotalFormulario" class="text-base sm:text-xl font-black text-emerald-400 tabular-nums">$ 0 <span class="text-xs text-slate-300 font-semibold">(0 líneas)</span></p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="cancelarCapturaProveedor()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 px-3.5 rounded-xl text-xs uppercase tracking-wider transition active:scale-95 min-h-[44px] flex items-center justify-center border border-slate-700">
+                ✕ Cancelar
+              </button>
+              <button type="button" onclick="previsualizarWhatsAppProveedorActual()" class="bg-gradient-to-b from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-black py-2.5 px-3.5 rounded-xl text-xs uppercase tracking-wider transition active:scale-95 min-h-[44px] flex items-center justify-center gap-1.5 shadow-sm" title="Ver y probar confirmación formal por WhatsApp">
+                <span>📲</span> WhatsApp
+              </button>
+              <button type="button" onclick="guardarPedidoCompletoProveedor()" class="bg-gradient-to-b from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 active:scale-95 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-emerald-500/20 min-h-[44px] flex items-center justify-center gap-1.5">
+                <span>💾</span> Guardar Pedido
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BOTÓN GRANDE: FINALIZAR Y ENVIAR MI ENTREGA (OPCIÓN A) -->
+        <div class="pt-1">
+          <button type="button" onclick="finalizarYEnviarEntrega()" class="w-full bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 hover:from-emerald-700 hover:via-emerald-800 hover:to-teal-900 active:scale-98 text-white font-black py-4 px-5 rounded-2xl text-xs sm:text-sm uppercase tracking-wider transition shadow-lg shadow-slate-900/15 flex items-center justify-center gap-2.5 border border-slate-700/80 min-h-[52px]">
+            <span class="text-base">🚀</span> Finalizar y Radicar Mi Entrega de Hoy
+          </button>
+          <p class="text-[10px] text-slate-500 text-center mt-1.5 font-medium">
+            Archiva tu lote de compras bajo tu nombre en el Buzón Central y sincroniza con Gerencia.
+          </p>
+        </div>
+
+      </section>
+
+      <!-- ========================================== -->
+      <!-- COLUMNA DERECHA: CONSOLIDADO Y EXPORTACIÓN (TAB 2) -->
+      <!-- ========================================== -->
+      <section id="seccionBorrador" class="w-full lg:col-span-6 space-y-4">
+        
+        <!-- TARJETA DE RESUMEN Y BOTONES DE EXPORTACIÓN -->
+        <div class="surface-card rounded-3xl p-4 sm:p-5 space-y-3.5">
+          
+          <!-- Encabezado con Botón Limpiar Todo y WhatsApp -->
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-lg shadow-2xs">📦</span>
+              <div>
+                <h2 class="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                  Pedidos Programados para Hoy
+                </h2>
+                <p class="text-[10px] sm:text-xs text-slate-500 font-medium">Consolidado en vivo ordenado por hora de llegada a planta</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap">
+              
+              <!-- BOTÓN LIMPIAR TODO -->
+              <button 
+                type="button" 
+                onclick="abrirModalConfirmarLimpiar()" 
+                class="bg-rose-50/90 hover:bg-rose-100 text-rose-700 border border-rose-200/90 font-bold px-2.5 sm:px-3 py-2 rounded-xl text-xs transition shadow-2xs flex items-center gap-1 active:scale-95 min-h-[38px]" 
+                title="Limpiar pedidos de hoy"
+              >
+                <span>🗑️</span> <span class="hidden sm:inline font-black">Limpiar Todo</span><span class="sm:hidden font-black">Limpiar</span>
+              </button>
+
+              <!-- BOTÓN WHATSAPP OPERATIVO -->
+              <button 
+                type="button" 
+                id="btnCopiarWhatsApp" 
+                class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 sm:px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 min-h-[38px]"
+              >
+                <span>📋</span> WhatsApp
+              </button>
+
+              <!-- BOTÓN CONFIRMAR A TODOS POR WHATSAPP -->
+              <button 
+                type="button" 
+                onclick="abrirModalConfirmarATodosWhatsApp()" 
+                class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-2.5 sm:px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 min-h-[38px]"
+                title="Confirmar pedidos a todos los agricultores por WhatsApp (con modo prueba a tu número)"
+              >
+                <span>📲</span> <span class="hidden sm:inline">Confirmar a Todos</span><span class="sm:hidden">A Todos</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- LAS DOS PLANTILLAS DE EXCEL -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            
+            <!-- Plantilla 1: Planta (Sin Precios) -->
+            <button type="button" id="btnExportarExcelPlanta" class="bg-gradient-to-br from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold p-3 rounded-2xl text-xs transition shadow-sm shadow-blue-600/15 flex flex-col items-center justify-center text-center active:scale-95 min-h-[54px] border border-blue-500/30">
+              <span class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide">🏭 Excel para Planta</span>
+              <span class="text-[10px] text-blue-100 font-medium mt-0.5">Sin Precios • Rutas, Cantidades y Horarios</span>
+            </button>
+
+            <!-- Plantilla 2: Administración (Con Precios) -->
+            <button type="button" id="btnExportarExcelAdmin" class="bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold p-3 rounded-2xl text-xs transition shadow-sm shadow-emerald-600/15 flex flex-col items-center justify-center text-center active:scale-95 min-h-[54px] border border-emerald-500/30">
+              <span class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide">💼 Excel Administración</span>
+              <span class="text-[10px] text-emerald-100 font-medium mt-0.5">Con Precios • Liquidación y Facturación</span>
+            </button>
+
+          </div>
+
+          <!-- MÉTRICAS CLAVE CON PUNTOS DE MIL Y DISTRIBUCIÓN POR DESTINO -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 text-center tabular-nums">
+            <div class="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-200/80 shadow-2xs">
+              <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Agricultores</p>
+              <p id="statTotalProveedores" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0</p>
+            </div>
+            <div class="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-200/80 shadow-2xs">
+              <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Líneas</p>
+              <p id="statTotalItems" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0</p>
+            </div>
+            <div class="bg-emerald-50/90 rounded-2xl p-2.5 border border-emerald-200/90 shadow-2xs">
+              <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Total Cajas</p>
+              <p id="statTotalCajas" class="text-base sm:text-lg font-black text-emerald-700 mt-0.5">0</p>
+            </div>
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-2.5 border border-slate-800 text-white shadow-sm">
+              <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Total Compras ($)</p>
+              <p id="statTotalValor" class="text-xs sm:text-sm font-black text-white mt-0.5">$ 0</p>
+            </div>
+          </div>
+
+          <!-- PÍLDORAS DE REPARTO POR CLIENTE DESTINO (PLANTA VS ALKOSTO VS OTROS) -->
+          <div id="contenedorResumenClientesDestino" class="flex flex-wrap items-center gap-1.5 pt-1 hidden">
+            <!-- Se llena dinámicamente con el desglose por cliente -->
+          </div>
+
+        </div>
+
+        <!-- LISTA CONSOLIDADA CRONOLÓGICA (FORMATO ERGONÓMICO ADAPTATIVO) -->
+        <div id="contenedorPedidosDia" class="space-y-3.5">
+          <!-- Se llena dinámicamente con tarjetas móviles legibles -->
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- BARRA INFERIOR FLOTANTE PARA MÓVIL (ERGONOMÍA PULGAR DIRECTA) -->
+  <!-- ========================================== -->
+  <nav id="barraInferiorMobile" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 sm:px-3 py-2 lg:hidden flex items-center justify-between gap-1 sm:gap-2 shadow-2xl no-print max-w-full overflow-hidden">
+    <div class="flex items-center shrink-0">
+      <button type="button" onclick="abrirModalConfirmarLimpiar()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-2 sm:px-3 py-2 rounded-xl flex items-center gap-1 shadow-2xs min-h-[38px] active:scale-95" title="Limpiar pedidos">
+        <span>🗑️</span> <span class="hidden sm:inline">Limpiar</span>
+      </button>
+    </div>
+    
+    <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+      <button type="button" onclick="abrirModalConfirmarATodosWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-black px-2 sm:px-3 py-2 rounded-xl flex items-center gap-1 shadow-xs min-h-[38px]">
+        <span>📲</span> <span class="hidden sm:inline">A Todos</span>
+      </button>
+      <button type="button" onclick="copiarMensajeWhatsApp()" class="bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-xs font-bold px-2 sm:px-3 py-2 rounded-xl flex items-center gap-1 shadow-xs min-h-[38px]">
+        <span>📋</span> <span class="hidden sm:inline">WhatsApp</span>
+      </button>
+      <button type="button" onclick="finalizarYEnviarEntrega()" class="bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-black px-2.5 sm:px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-xs min-h-[38px]">
+        <span>🚀</span> <span>Radicar</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GESTOR DE TARIFAS Y CONDICIONES MENSUALES (GERENCIA) -->
+  <!-- ========================================== -->
+  <div id="modalGestionPrecios" class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Encabezado Modal -->
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">⚙️</span>
+          <div>
+            <h3 class="font-extrabold text-sm sm:text-base">Gestor de Tarifas y Condiciones Mensuales</h3>
+            <p class="text-[11px] text-slate-300">Edición ejecutiva de precios pactados, plazos de crédito y vigencias</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalGestionPrecios()" class="text-slate-400 hover:text-white text-xl font-bold p-1">
+          ✕
+        </button>
+      </div>
+
+      <!-- Filtro y Selección de Proveedor -->
+      <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex-1 min-w-[240px]">
+          <label class="block text-xs font-bold text-slate-700 mb-1">Selecciona el Agricultor a Actualizar:</label>
+          <select id="selectProveedorEditarPrecios" onchange="cargarProductosProveedorParaEdicion(this.value)" class="w-full h-11 bg-white border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+            <!-- Opciones dinámicas -->
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2 sm:pt-4">
+          <button type="button" onclick="agregarNuevoProductoAProveedor()" class="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 rounded-xl text-xs flex items-center gap-1 transition shadow-xs active:scale-95">
+            <span>➕</span> Nuevo Producto
+          </button>
+          <button type="button" onclick="restablecerPreciosOriginales()" class="h-11 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 rounded-xl text-xs flex items-center gap-1 transition active:scale-95" title="Restablecer base">
+            <span>🔄</span> Fábrica
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Productos y Precios del Proveedor -->
+      <div class="p-4 overflow-y-auto space-y-3 flex-1" id="contenedorEdicionProductosProveedor">
+        <!-- Tarjetas dinámicas de precios editables -->
+      </div>
+
+      <!-- Botones de Guardar y Respaldar -->
+      <div class="p-3.5 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="exportarCatalogoPreciosJSON()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95">
+            📥 Respaldar Tarifas (JSON)
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="cerrarModalGestionPrecios()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition active:scale-95">
+            Cancelar
+          </button>
+          <button type="button" onclick="guardarCambiosPreciosProveedor()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md flex items-center gap-1.5 active:scale-95">
+            <span>💾</span> Guardar Tarifas del Mes
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CONFIRMAR LIMPIAR TODO EL BORRADOR -->
+  <!-- ========================================== -->
+  <div id="modalConfirmarLimpiar" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+      <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-3xl mx-auto">
+        🗑️
+      </div>
+      <div>
+        <h3 class="font-black text-lg text-slate-900">¿Limpiar los Pedidos de Hoy?</h3>
+        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed" id="lblTextoConfirmarLimpiar">
+          Se eliminarán los pedidos ingresados hoy para <strong id="lblUsuarioLimpiar">Camilo Romero</strong>.
+        </p>
+        <p class="text-[11px] text-emerald-700 font-semibold mt-2 bg-emerald-50 py-1 px-2 rounded-lg inline-block">
+          🛡️ Los lotes ya radicados quedan a salvo.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <button type="button" onclick="cerrarModalConfirmarLimpiar()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl text-xs transition min-h-[46px] active:scale-95">
+          Cancelar
+        </button>
+        <button type="button" onclick="ejecutarLimpiarTodoBorrador()" class="w-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md min-h-[46px]">
+          Sí, Limpiar Todo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SELECCIÓN DE PERFIL (CAMILO / CLAUDIA / ADMIN) -->
+  <div id="modalSeleccionPerfil" class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="text-center space-y-1">
+        <span class="text-3xl">🌱</span>
+        <h3 class="font-black text-lg text-slate-900">¿Quién está diligenciando hoy?</h3>
+        <p class="text-xs text-slate-500">Selecciona tu perfil de compras para ver tus agricultores asignados:</p>
+      </div>
+
+      <div class="space-y-2.5 pt-2">
+        
+        <!-- Tarjeta Camilo -->
+        <button type="button" onclick="seleccionarPerfilUsuario('camilo')" class="w-full bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 p-3.5 rounded-2xl flex items-center justify-between text-left transition group active:scale-98">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-base flex items-center justify-center">CR</span>
+            <div>
+              <p class="font-extrabold text-slate-900 text-sm">Camilo Romero</p>
+              <p class="text-[11px] text-slate-500">Tomates, Lechugas, Salanova, Diego y Gabriel</p>
+            </div>
+          </div>
+          <span class="text-xs bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg">Entrar</span>
+        </button>
+
+        <!-- Tarjeta Claudia -->
+        <button type="button" onclick="seleccionarPerfilUsuario('claudia')" class="w-full bg-teal-50 hover:bg-teal-100 border-2 border-teal-300 p-3.5 rounded-2xl flex items-center justify-between text-left transition group active:scale-98">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-teal-600 text-white font-black text-base flex items-center justify-center">CM</span>
+            <div>
+              <p class="font-extrabold text-slate-900 text-sm">Claudia Márquez</p>
+              <p class="text-[11px] text-slate-500">Apio, Brócoli, Coliflor, Cilantro, Acelga</p>
+            </div>
+          </div>
+          <span class="text-xs bg-teal-600 text-white font-bold px-2.5 py-1 rounded-lg">Entrar</span>
+        </button>
+
+        <!-- Tarjeta Gerencia / Administración -->
+        <button type="button" onclick="seleccionarPerfilUsuario('admin')" class="w-full bg-slate-50 hover:bg-slate-100 border-2 border-slate-300 p-3.5 rounded-2xl flex items-center justify-between text-left transition group active:scale-98">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-slate-800 text-white font-black text-base flex items-center justify-center">👑</span>
+            <div>
+              <p class="font-extrabold text-slate-900 text-sm">Gerencia / Administración</p>
+              <p class="text-[11px] text-slate-500">Supervisión general, todos los agricultores y buzón</p>
+            </div>
+          </div>
+          <span class="text-xs bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg">Entrar</span>
+        </button>
+
+      </div>
+
+      <p class="text-[10px] text-slate-400 text-center pt-2">
+        El teléfono recordará tu elección automáticamente.
+      </p>
+    </div>
+  </div>
+
+  <!-- MODAL: BUZÓN DE ENTREGAS FINALIZADAS (OPCIÓN A) -->
+  <div id="modalBuzonEntregas" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="font-extrabold text-slate-900 text-sm">📦 Buzón de Entregas Radicadas del Día</h3>
+          <p class="text-xs text-slate-500">Lotes de compras enviados por Camilo y Claudia por separado</p>
+        </div>
+        <button type="button" onclick="cerrarModalBuzon()" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto space-y-3 flex-1" id="contenedorListaBuzon">
+        <!-- Se llena con las entregas archivadas -->
+      </div>
+
+      <div class="p-3 border-t border-slate-200 bg-slate-50 text-right">
+        <button type="button" onclick="cerrarModalBuzon()" class="px-5 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-900 transition">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL CELULAR -->
+  <div id="modalCelular" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3 text-xs">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-sm text-slate-900">📱 Abrir en Celular</h3>
+        <button type="button" onclick="cerrarModalCelular()" class="text-slate-400 text-lg">✕</button>
+      </div>
+      <p class="text-slate-600">Abre este enlace desde cualquier teléfono con internet:</p>
+      <a href="https://controlpedi.netlify.app" target="_blank" class="block bg-emerald-50 text-emerald-800 font-bold p-3 rounded-xl border border-emerald-300 text-center text-sm">
+        👉 https://controlpedi.netlify.app
+      </a>
+      <p class="text-slate-500">• Para dejarlo como App: En Chrome pulsa los 3 puntos ➔ <em>"Agregar a pantalla principal"</em>.</p>
+      <button type="button" onclick="cerrarModalCelular()" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl">Entendido</button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 1. MODAL: ALERTA QUINCENAL (DÍAS 1 Y 16) SEÑORA MC -->
+  <!-- ========================================== -->
+  <div id="modalAlertaQuincenalMC" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-2 border-teal-500 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start gap-3 border-b border-slate-200 pb-3">
+        <span class="w-12 h-12 rounded-2xl bg-teal-600 text-white font-black text-2xl flex items-center justify-center shrink-0 shadow-md">🔔</span>
+        <div class="flex-1">
+          <span class="inline-block text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full mb-1">
+            Control de Corte Quincenal (Días 1 y 16)
+          </span>
+          <h3 class="font-black text-base sm:text-lg text-slate-900 leading-snug">
+            Actualización de Precios — Sra. María Claudia Márquez
+          </h3>
+          <p class="text-xs text-slate-600 mt-0.5" id="lblSubtituloAlertaMC">
+            Hoy es día de corte quincenal. Antes de generar pedidos, por favor asegúrate de actualizar la lista de precios o confirmar si continúas con las tarifas vigentes.
+          </p>
+        </div>
+      </div>
+
+      <!-- Opción 1: Subir Excel con actualización de precios -->
+      <div class="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-4 space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <h4 class="text-xs font-black text-emerald-950 uppercase tracking-wide flex items-center gap-1.5">
+            <span>📥</span> Opción A: Subir Excel con Actualización de Precios
+          </h4>
+          <button type="button" onclick="descargarPlantillaPreciosExcel()" class="text-[11px] bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2.5 py-1 rounded-lg transition shadow-2xs active:scale-95">
+            ⬇️ Descargar Plantilla Actual
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-600 leading-relaxed">
+          Sube el archivo Excel (<code class="font-bold text-emerald-900">.xlsx</code> o <code class="font-bold text-emerald-900">.xls</code>) con las columnas <strong>Agricultor / Proveedor</strong>, <strong>Producto</strong> y <strong>Precio</strong> para actualizar automáticamente el catálogo:
+        </p>
+        <label class="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider cursor-pointer transition shadow-md">
+          <span>📂</span> Seleccionar Archivo Excel de Precios
+          <input type="file" id="inputExcelPreciosMC" accept=".xlsx,.xls,.csv" onchange="subirExcelActualizacionPreciosMC(event)" class="hidden">
+        </label>
+        <p id="lblResultadoExcelMC" class="text-xs font-bold text-emerald-800 hidden"></p>
+      </div>
+
+      <!-- Opción Intermedia: Editar manualmente en pantalla -->
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold text-slate-800">⚙️ ¿Prefieres ajustar solo algunos precios en pantalla?</p>
+          <p class="text-[11px] text-slate-500">Abre el gestor interactivo de tarifas y productos.</p>
+        </div>
+        <button type="button" onclick="cerrarModalAlertaMCYAbrirPrecios()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-2 rounded-xl text-xs shrink-0 transition active:scale-95">
+          Editar en Pantalla
+        </button>
+      </div>
+
+      <!-- Opción 2: Confirmar continuar con los precios anteriores / Continuar sin actualizar -->
+      <div class="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-4 space-y-2.5">
+        <h4 class="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
+          <span>⚠️</span> Opción B: Continuar sin Actualizar (Genera Alerta en Pedidos)
+        </h4>
+        <p class="text-[11px] text-amber-900 leading-relaxed">
+          Si decides continuar sin actualizar precios, el sistema te permitirá operar pero <strong>marcará una alerta visible en cada pedido que envíes</strong> indicando que se pactó con tarifas anteriores pendientes de validación por Gerencia:
+        </p>
+        <button type="button" onclick="confirmarPreciosAnterioresMC()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2">
+          <span>⚠️</span> Continuar sin Actualizar (Activar Alerta en Pedidos)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. MODAL: SEGURIDAD CORPORATIVA, CONTRASEÑAS ALFANUMÉRICAS Y AUDITORÍA (ANTI-SCRIPTS) -->
+  <!-- ========================================== -->
+  <div id="modalLoginSeguridad" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-2xl bg-slate-900 text-amber-400 font-black text-lg flex items-center justify-center">🛡️</span>
+          <div>
+            <h3 class="font-black text-base text-slate-900" id="lblTituloModalSeguridad">Control de Acceso y Ciberseguridad</h3>
+            <p class="text-[11px] text-slate-500" id="lblSubtituloModalSeguridad">Protección PBKDF2-SHA256 + Anti-Fuerza Bruta Automatizada</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalSeguridad()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
+      </div>
+
+      <!-- Banner de Bloqueo Exponencial Anti-Scripts -->
+      <div id="bannerBloqueoSeguridad" class="bg-rose-50 border-2 border-rose-400 text-rose-900 p-3.5 rounded-2xl text-xs font-bold hidden space-y-1">
+        <p class="font-black text-sm flex items-center gap-1.5"><span>🚨</span> Bloqueo Temporal por Intentos Fallidos (Defensa Anti-Bot)</p>
+        <p id="lblDetalleBloqueoSeguridad" class="text-[11px] text-rose-800"></p>
+      </div>
+
+      <!-- Formulario de Ingreso con Contraseña Alfanumérica -->
+      <div id="bloqueFormularioAutenticacion" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-700">Perfil solicitado:</span>
+          <span id="badgePerfilSolicitadoAuth" class="text-xs font-black bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-lg border border-emerald-300">Gerencia / Administración</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1" for="inputClaveSeguridad">
+            🔑 Contraseña Corporativa Alfanumérica:
+          </label>
+          <div class="relative flex items-center">
+            <input 
+              type="password" 
+              id="inputClaveSeguridad" 
+              placeholder="Ingresa la contraseña del perfil..." 
+              autocomplete="current-password"
+              class="w-full h-11 pl-3.5 pr-20 rounded-xl border border-slate-300 focus:ring-2 focus:ring-slate-900 text-sm font-bold text-slate-900 bg-white outline-none"
+            >
+            <button type="button" onclick="toggleVerClaveSeguridad('inputClaveSeguridad')" class="absolute right-2 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">
+              👁️ Ver
+            </button>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-slate-700 font-semibold cursor-pointer select-none">
+          <input type="checkbox" id="chkRecordarSesionDispositivo" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500">
+          Recordar sesión autorizada en este teléfono/computador
+        </label>
+
+        <p id="lblErrorLoginSeguridad" class="text-xs font-bold text-rose-600 hidden"></p>
+
+        <button type="button" id="btnAutenticarPerfilFisico" class="w-full bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2">
+          <span>🔓</span> Verificar Identidad y Acceder
+        </button>
+      </div>
+
+      <!-- Sección Cambiar Contraseña Alfanumérica del Perfil Actual -->
+      <details class="bg-white border border-slate-200 rounded-2xl p-3.5 text-xs">
+        <summary class="font-extrabold text-slate-800 cursor-pointer flex items-center justify-between">
+          <span>🔐 Cambiar Contraseña Alfanumérica o Cerrar Sesión</span>
+          <span class="text-slate-400">▼</span>
+        </summary>
+        <div class="pt-3 mt-2 border-t border-slate-100 space-y-2.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Contraseña Actual:</label>
+              <input type="password" id="inputClaveActualCambio" placeholder="Clave actual" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Nueva Contraseña (Mín. 6 caract.):</label>
+              <input type="password" id="inputClaveNuevaCambio" placeholder="Ej. AgroClaudia2026#" class="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-bold">
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <button type="button" onclick="revocarSesionesDispositivo()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl text-[11px]">
+              🔒 Cerrar Sesiones Guardadas
+            </button>
+            <button type="button" id="btnGuardarNuevaClaveFisico" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-xl text-xs">
+              💾 Actualizar Contraseña
+            </button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. MODAL: PEDIDO A PROVEEDOR NO AGREGADO -->
+  <!-- ========================================== -->
+  <div id="modalProveedorNoAgregado" class="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-2 border-indigo-500 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-2xl bg-indigo-600 text-white font-black text-lg flex items-center justify-center">➕</span>
+          <div>
+            <h3 class="font-black text-base text-slate-900">Pedido a Proveedor No Agregado</h3>
+            <p class="text-[11px] text-slate-500">Registra una compra inmediata con nombre, apellidos, teléfono, producto y precio</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalProveedorNoAgregado()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <!-- Nombre y Apellidos + Teléfono -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">👤 Nombres del Proveedor *:</label>
+            <input type="text" id="inputNuevoProvNombres" placeholder="Ej. Carlos Alberto" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">👤 Apellidos / Razón Social *:</label>
+            <input type="text" id="inputNuevoProvApellidos" placeholder="Ej. Gómez Ruíz" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📞 Número de Teléfono (WhatsApp) *:</label>
+            <input type="tel" id="inputNuevoProvTelefono" placeholder="Ej. 3101234567" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">🏢 Hora Llegada a Planta:</label>
+            <input type="time" id="inputNuevoProvHora" value="11:00" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Producto y Precio Unitario -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-slate-100">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">🥬 Producto a Comprar *:</label>
+            <input type="text" id="inputNuevoProvProducto" oninput="verificarSiNuevoProvEsBrocoli(this.value)" placeholder="Ej. Brócoli, Cilantro, Lechuga..." class="w-full h-11 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">💲 Precio Unitario Pactado ($) *:</label>
+            <input type="text" inputmode="numeric" id="inputNuevoProvPrecio" oninput="formatearInputMilesDirecto(this)" placeholder="Ej. 25.000" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-emerald-800 bg-emerald-50/50 focus:ring-2 focus:ring-indigo-500 outline-none tabular-nums">
+          </div>
+        </div>
+
+        <!-- Cantidad, Unidad y Cliente Destino -->
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">🔢 Cantidad *:</label>
+            <input type="text" inputmode="decimal" id="inputNuevoProvCantidad" oninput="formatearInputMilesDirecto(this)" value="10" class="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-slate-900 text-center focus:ring-2 focus:ring-indigo-500 outline-none tabular-nums">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📦 Unidad:</label>
+            <select id="selectNuevoProvUnidad" class="w-full h-11 px-2 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white">
+              <option value="CANASTILLA">CANASTILLA</option>
+              <option value="UNIDADES">UNIDADES</option>
+              <option value="DOCENAS">DOCENAS</option>
+              <option value="KILOS">KILOS</option>
+              <option value="ATADOS">ATADOS</option>
+              <option value=" BULTOS">BULTOS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">🎯 Destino:</label>
+            <select id="selectNuevoProvCliente" class="w-full h-11 px-2 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white">
+              <option value="General / Planta">General / Planta</option>
+              <option value="Alkosto">Alkosto</option>
+              <option value="Éxito">Éxito</option>
+              <option value="Carulla">Carulla</option>
+              <option value="Cencosud">Cencosud</option>
+              <option value="Ara">Ara</option>
+              <option value="Oxxo">Oxxo</option>
+              <option value="PriceSmart">PriceSmart</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Opciones Especiales de Brócoli si escribe Brócoli -->
+        <div id="bloqueBrocoliNuevoProv" class="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 space-y-2 hidden">
+          <p class="font-black text-emerald-950 text-[11px] uppercase">🥦 Opciones Especiales para Brócoli:</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-emerald-900 mb-0.5">Modalidad de Compra:</label>
+              <select id="selectNuevoProvBrocoliModalidad" onchange="cambiarModalidadBrocoliNuevoProv(this.value)" class="w-full h-9 px-2 rounded-lg border border-emerald-300 bg-white font-bold text-xs">
+                <option value="por cajas" selected>📦 Por cajas (No requiere pago posterior)</option>
+                <option value="por corte">🔪 Por corte</option>
+              </select>
+            </div>
+            <div id="contenedorPagoBrocoliNuevoProv" class="hidden">
+              <label class="block text-[10px] font-bold text-emerald-900 mb-0.5">Condición de Pago (Por corte):</label>
+              <select id="selectNuevoProvBrocoliPago" class="w-full h-9 px-2 rounded-lg border border-emerald-300 bg-white font-bold text-xs">
+                <option value="aviso previo para gestión del pago posterior">🕒 Aviso de pago posterior</option>
+                <option value="pago inmediato">💵 Pago inmediato</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-slate-700 font-semibold cursor-pointer pt-1">
+          <input type="checkbox" id="chkGuardarNuevoProvEnCatalogo" checked class="w-4 h-4 rounded text-indigo-600">
+          Dejar guardado este proveedor en el catálogo para próximos pedidos
+        </label>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalProveedorNoAgregado()" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-xs">
+          Cancelar
+        </button>
+        <button type="button" onclick="guardarPedidoProveedorNoAgregado()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow-md">
+          💾 Crear Pedido Ahora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. MODAL: CONFIRMACIÓN POR WHATSAPP PARA TERCEROS (MODO PRUEBA MI WHATSAPP Y OFICIAL) -->
+  <!-- ========================================== -->
+  <div id="modalConfirmacionWhatsAppTercero" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border-2 border-emerald-500 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-2xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center">📲</span>
+          <div>
+            <h3 class="font-black text-base text-slate-900">Orden de Pedido y Confirmación por WhatsApp</h3>
+            <p class="text-[11px] text-slate-500">Formato corporativo oficial con solicitud de respuesta <strong>CONFIRMO</strong></p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalConfirmacionWhatsAppTercero()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
+      </div>
+
+      <!-- Vista Previa Editable del Mensaje Formal -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-700">📄 Mensaje Oficial que recibirá el Agricultor / Tercero:</label>
+          <button type="button" onclick="copiarTextoConfirmacionWhatsAppTercero()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1 rounded-lg">
+            📋 Copiar Texto
+          </button>
+        </div>
+        <textarea 
+          id="txtPreviewWhatsAppTercero" 
+          rows="13" 
+          class="w-full p-3.5 rounded-2xl bg-slate-50 border border-slate-300 font-mono text-xs text-slate-900 leading-relaxed focus:ring-2 focus:ring-emerald-500 outline-none"
+        ></textarea>
+      </div>
+
+      <!-- CAJA DE PRUEBA CON MI WHATSAPP -->
+      <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+            <span>🧪</span> Modo Prueba: Enviar Primero a Mi WhatsApp
+          </h4>
+          <span class="text-[10px] font-bold bg-amber-200 text-amber-950 px-2 py-0.5 rounded-full">Simulación Segura</span>
+        </div>
+        <p class="text-[11px] text-amber-900">
+          Escribe tu propio número de celular para recibir este mensaje de prueba en tu WhatsApp y verificar cómo se ve antes de enviarlo al proveedor:
+        </p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input 
+            type="tel" 
+            id="inputTelefonoPruebaWhatsApp" 
+            placeholder="Tu número de WhatsApp (ej. 3001234567)" 
+            class="flex-1 h-11 px-3 rounded-xl border border-amber-400 bg-white font-bold text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+          >
+          <button 
+            type="button" 
+            onclick="enviarWhatsAppTerceroModoPrueba()" 
+            class="bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition shadow-sm shrink-0"
+          >
+            🧪 Probar en mi WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <!-- Envío Oficial al Teléfono del Proveedor -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
+        <div class="text-xs text-slate-600">
+          📞 Teléfono Proveedor: <strong id="lblTelefonoOficialProveedorWA" class="text-slate-900 font-black">Sin teléfono</strong>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="cerrarModalConfirmacionWhatsAppTercero()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs">
+            Cerrar
+          </button>
+          <button type="button" onclick="enviarWhatsAppTerceroOficial()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center gap-1.5">
+            <span>📲</span> Enviar al WhatsApp del Proveedor
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CONFIRMAR Y ENVIAR A TODOS POR WHATSAPP -->
+  <!-- ========================================== -->
+  <div id="modalConfirmarATodosWhatsApp" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border-2 border-emerald-500 space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+      
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-3">
+          <span class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-xl flex items-center justify-center shadow-md">📲</span>
+          <div>
+            <h3 class="font-black text-base sm:text-lg text-slate-900">Confirmación Masiva a Agricultores por WhatsApp</h3>
+            <p class="text-[11px] text-slate-500">Envía la orden formal con palabra <strong>CONFIRMO</strong> a cada proveedor del día</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalConfirmarATodosWhatsApp()" class="text-slate-400 hover:text-slate-700 font-bold text-xl px-2">✕</button>
+      </div>
+
+      <!-- Selector: ¿Probar primero a mi número o enviar a contactos reales? -->
+      <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+            <span>🧪</span> ¿Hacia dónde enviar las confirmaciones?
+          </h4>
+          <span class="text-[10px] font-bold bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-full">Control de Envío</span>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <label class="flex items-start gap-2 bg-white p-2.5 rounded-xl border border-amber-300 cursor-pointer">
+            <input type="radio" name="destinoMasivoWA" value="prueba" id="radioMasivoPrueba" checked onchange="toggleModoMasivoWA()" class="mt-0.5 text-emerald-600">
+            <div>
+              <p class="font-extrabold text-slate-900">🧪 Enviar a mi propio número (Modo Prueba)</p>
+              <p class="text-[10px] text-slate-500">Todos los mensajes llegarán a tu WhatsApp para verificar antes de notificar a los agricultores.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-2 bg-white p-2.5 rounded-xl border border-amber-300 cursor-pointer">
+            <input type="radio" name="destinoMasivoWA" value="oficial" id="radioMasivoOficial" onchange="toggleModoMasivoWA()" class="mt-0.5 text-emerald-600">
+            <div>
+              <p class="font-extrabold text-slate-900">🚀 Enviar al teléfono de cada agricultor</p>
+              <p class="text-[10px] text-slate-500">Usa el número de contacto registrado en el catálogo para cada proveedor.</p>
+            </div>
+          </label>
+        </div>
+
+        <div id="cajaTelefonoPruebaMasivo" class="pt-1 flex flex-col sm:flex-row gap-2 items-center">
+          <span class="text-xs font-bold text-amber-900 shrink-0">📱 Tu WhatsApp de prueba:</span>
+          <input 
+            type="tel" 
+            id="inputTelefonoPruebaMasivo" 
+            placeholder="Ej. 3001234567" 
+            class="flex-1 h-10 px-3 rounded-xl border border-amber-400 bg-white font-black text-xs text-slate-900 outline-none focus:ring-2 focus:ring-amber-500"
+          >
+        </div>
+      </div>
+
+      <!-- Lista de Proveedores a Confirmar -->
+      <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="contenedorListaMasivaWA">
+        <!-- Tarjetas dinámicas de cada proveedor con botón de disparo -->
+      </div>
+
+      <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
+        <p class="text-[11px] text-slate-500" id="lblResumenMasivoWA">0 agricultores listos para confirmar</p>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="cerrarModalConfirmarATodosWhatsApp()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs">
+            Cerrar
+          </button>
+          <button type="button" onclick="iniciarEnvioSecuencialMasivoWA()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center gap-1.5">
+            <span>🚀</span> Enviar Uno Tras Otro
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 5. MODAL: BASE DE DATOS SQL, HISTÓRICO MULTIFECHA Y SINCRONIZACIÓN MULTIDISPOSITIVO -->
+  <!-- ========================================== -->
+  <div id="modalHistoricoSQL" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-5xl w-full p-5 sm:p-6 shadow-2xl border-2 border-indigo-500 space-y-4 max-h-[93vh] flex flex-col overflow-hidden">
+      
+      <!-- Encabezado -->
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-11 h-11 rounded-2xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center shadow-md">🗄️</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-black text-base sm:text-lg text-slate-900">Base de Datos SQL e Histórico Centralizado</h3>
+              <span id="badgeEstadoNubeModal" class="text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                ☁️ Sincronización Multidispositivo Activa
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500">Todos los dispositivos sincronizan por perfil (Camilo, Claudia, Gerencia) + Exportación SQL, Excel y Outlook Corporativo</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalHistoricoSQL()" class="text-slate-400 hover:text-slate-700 font-bold text-xl px-2">✕</button>
+      </div>
+
+      <!-- Cuerpo con scroll -->
+      <div class="overflow-y-auto space-y-4 flex-1 pr-1">
+
+        <!-- BARRA DE FILTROS MULTIFECHA Y POR PERFIL / CLIENTE -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">📅 Fecha Desde:</label>
+              <input type="date" id="sqlFechaDesde" onchange="renderizarTablaHistoricoSQL()" class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">📅 Fecha Hasta:</label>
+              <input type="date" id="sqlFechaHasta" onchange="renderizarTablaHistoricoSQL()" class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">👤 Perfil Comprador:</label>
+              <select id="sqlFiltroPerfil" onchange="renderizarTablaHistoricoSQL()" class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
+                <option value="todos">Todos (Camilo + Claudia + Gerencia)</option>
+                <option value="camilo">Solo Camilo Romero</option>
+                <option value="claudia">Solo Claudia Márquez</option>
+                <option value="admin">Solo Gerencia</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">🎯 Cliente Destino:</label>
+              <select id="sqlFiltroCliente" onchange="renderizarTablaHistoricoSQL()" class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
+                <option value="todos">Todos los Clientes</option>
+                <option value="General / Planta">General / Planta</option>
+                <option value="Alkosto">Alkosto</option>
+                <option value="Éxito">Éxito</option>
+                <option value="Carulla">Carulla</option>
+                <option value="Cencosud">Cencosud</option>
+                <option value="Ara">Ara</option>
+                <option value="Oxxo">Oxxo</option>
+                <option value="PriceSmart">PriceSmart</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">🔍 Agricultor o Producto:</label>
+              <input type="text" id="sqlFiltroTexto" oninput="renderizarTablaHistoricoSQL()" placeholder="Ej. Brócoli, Andrés..." class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
+            </div>
+          </div>
+
+          <!-- Atajos de Rango de Fechas + Botón Sincronizar Nube -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-xs">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] font-bold text-slate-500">Rangos rápidos:</span>
+              <button type="button" onclick="establecerRangoSQL('hoy')" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-[11px]">Hoy</button>
+              <button type="button" onclick="establecerRangoSQL('semana')" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-[11px]">Últimos 7 días</button>
+              <button type="button" onclick="establecerRangoSQL('quincena')" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-[11px]">Esta Quincena</button>
+              <button type="button" onclick="establecerRangoSQL('mes')" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-[11px]">Todo el Mes</button>
+              <button type="button" onclick="establecerRangoSQL('todo')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-black px-2.5 py-1 rounded-lg text-[11px]">Todo el Histórico</button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="sincronizarNubeManual()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black px-3 py-1 rounded-lg text-[11px] flex items-center gap-1">
+                <span>🔄</span> Sincronizar Dispositivos Ahora
+              </button>
+              <label class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded-lg text-[11px] cursor-pointer flex items-center gap-1" title="Importar y unir archivos Excel o respaldos de otros días/dispositivos">
+                <span>📥</span> Unir Archivos Excel / Respaldo
+                <input type="file" id="inputImportarHistoricoSQL" accept=".xlsx,.xls,.json,.agp" multiple onchange="importarArchivosAlHistoricoSQL(event)" class="hidden">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs DEL RANGO SELECCIONADO (CON PUNTOS DE MIL) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center tabular-nums">
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <p class="text-[10px] font-bold uppercase text-slate-500">Registros SQL</p>
+            <p id="sqlStatRegistros" class="text-lg font-black text-slate-900">0</p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <p class="text-[10px] font-bold uppercase text-slate-500">Agricultores</p>
+            <p id="sqlStatProveedores" class="text-lg font-black text-slate-900">0</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3">
+            <p class="text-[10px] font-bold uppercase text-emerald-800">Volumen Unidades/Cajas</p>
+            <p id="sqlStatUnidades" class="text-lg font-black text-emerald-700">0</p>
+          </div>
+          <div class="bg-slate-900 text-white rounded-2xl p-3">
+            <p class="text-[10px] font-bold uppercase text-emerald-400">Inversión Acumulada ($)</p>
+            <p id="sqlStatValorTotal" class="text-base sm:text-lg font-black text-white">$ 0</p>
+          </div>
+        </div>
+
+        <!-- BOTONES DE DESCARGA Y EXPORTACIÓN: SQL + EXCEL + OUTLOOK CORPORATIVO -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button type="button" onclick="exportarHistoricoExcelConsolidado()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black py-3 px-4 rounded-2xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2">
+            <span>📗</span> Descargar Excel Consolidado (.xlsx)
+          </button>
+          <button type="button" onclick="exportarBaseDatosSQLArchivo()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-black py-3 px-4 rounded-2xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2">
+            <span>🗄️</span> Descargar Base de Datos (.sql)
+          </button>
+          <button type="button" onclick="enviarReporteHistoricoOutlook()" class="bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-black py-3 px-4 rounded-2xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2">
+            <span>📧</span> Enviar por Outlook Corporativo
+          </button>
+        </div>
+
+        <!-- CONFIGURACIÓN DE CORREOS OUTLOOK CORPORATIVOS Y CANAL DE NUBE -->
+        <details class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs">
+          <summary class="font-extrabold text-slate-800 cursor-pointer flex items-center justify-between">
+            <span>⚙️ Configurar Correos Outlook Corporativos y Código de Sincronización entre Dispositivos</span>
+            <span class="text-slate-400">▼</span>
+          </summary>
+          <div class="pt-3 mt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-1">📧 Outlook Gerencia (Destino):</label>
+              <input type="email" id="cfgCorreoGerencia" placeholder="gerencia@empresa.com" class="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-1">📧 Outlook Camilo:</label>
+              <input type="email" id="cfgCorreoCamilo" placeholder="camilo@empresa.com" class="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-1">📧 Outlook Sra. Claudia:</label>
+              <input type="email" id="cfgCorreoClaudia" placeholder="claudia@empresa.com" class="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white font-bold text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-indigo-800 mb-1">☁️ Código Empresa Nube (Igual en todos):</label>
+              <div class="flex gap-1">
+                <input type="text" id="cfgCodigoEmpresaNube" value="AGROGESTION_CORP_2026" class="w-full h-9 px-2.5 rounded-lg border border-indigo-300 bg-white font-black text-indigo-900 text-xs">
+                <button type="button" onclick="guardarConfiguracionOutlookYNube()" class="bg-slate-900 text-white font-black px-3 rounded-lg text-[11px] shrink-0">Guardar</button>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- TABLA VISTA PREVIA DE LA BASE SQL -->
+        <div class="border border-slate-200 rounded-2xl overflow-hidden">
+          <div class="max-h-64 overflow-y-auto">
+            <table class="w-full text-xs tabular-nums">
+              <thead class="bg-slate-900 text-white sticky top-0">
+                <tr class="text-left text-[11px]">
+                  <th class="p-2.5">Fecha</th>
+                  <th class="p-2.5">Perfil</th>
+                  <th class="p-2.5">Hora</th>
+                  <th class="p-2.5">Agricultor</th>
+                  <th class="p-2.5">Producto</th>
+                  <th class="p-2.5 text-right">Cantidad</th>
+                  <th class="p-2.5 text-right">Precio Unit.</th>
+                  <th class="p-2.5 text-right">Subtotal ($)</th>
+                  <th class="p-2.5">Destino</th>
+                </tr>
+              </thead>
+              <tbody id="sqlTablaCuerpo" class="divide-y divide-slate-200 bg-white">
+                <!-- Se llena dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VISTA OFICIAL DE IMPRESIÓN Y PDF GERENCIAL -->
+  <!-- ========================================== -->
+  <div id="vistaImprimibleOficial" class="hidden print:block p-8 bg-white text-slate-900">
+    <div class="border-b-2 border-slate-900 pb-4 flex justify-between items-end">
+      <div>
+        <h1 class="text-2xl font-black tracking-tight text-slate-900">AGROGESTIÓN PRO</h1>
+        <p class="text-xs text-slate-600 font-bold uppercase tracking-wider">Acta Oficial de Compras y Programación de Despachos</p>
+      </div>
+      <div class="text-right text-xs space-y-0.5">
+        <p><strong>Fecha de Radicación:</strong> <span id="printFecha"></span></p>
+        <p><strong>Folio de Control:</strong> <span id="printFolio"></span></p>
+        <p><strong>Aprobación Gerencia:</strong> <span id="printAprobado" class="text-emerald-700 font-bold"></span></p>
+      </div>
+    </div>
+
+    <!-- Resumen Financiero Ejecutivo -->
+    <div class="grid grid-cols-4 gap-4 my-4 p-3 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+      <div>
+        <p class="text-slate-500 font-semibold">Total Inversión ($):</p>
+        <p id="printTotalValor" class="text-base font-black text-slate-900">$ 0</p>
+      </div>
+      <div>
+        <p class="text-slate-500 font-semibold">Volumen Total Cajas:</p>
+        <p id="printTotalCajas" class="text-base font-black text-slate-900">0</p>
+      </div>
+      <div>
+        <p class="text-slate-500 font-semibold">Agricultores en Ruta:</p>
+        <p id="printTotalAgricultores" class="text-base font-black text-slate-900">0</p>
+      </div>
+      <div>
+        <p class="text-slate-500 font-semibold">Estado Auditoría:</p>
+        <p id="printEstadoAuditoria" class="text-xs font-bold text-emerald-800">100% Conforme</p>
+      </div>
+    </div>
+
+    <!-- Tabla Oficial de Compras -->
+    <table class="w-full text-[11px] border-collapse border border-slate-300 my-4">
+      <thead>
+        <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-300 text-left">
+          <th class="p-2 border border-slate-300">Hora</th>
+          <th class="p-2 border border-slate-300">Agricultor (Campo)</th>
+          <th class="p-2 border border-slate-300">Razón Social Factura</th>
+          <th class="p-2 border border-slate-300">Producto</th>
+          <th class="p-2 border border-slate-300 text-center">Cantidad</th>
+          <th class="p-2 border border-slate-300 text-right">Precio Unit.</th>
+          <th class="p-2 border border-slate-300 text-right">Subtotal ($)</th>
+          <th class="p-2 border border-slate-300">Destino</th>
+          <th class="p-2 border border-slate-300">Condición Pago</th>
+        </tr>
+      </thead>
+      <tbody id="printTablaCuerpo" class="divide-y divide-slate-200">
+        <!-- Llenado dinámico -->
+      </tbody>
+    </table>
+
+    <!-- Firmas Oficiales de Auditoría -->
+    <div class="grid grid-cols-3 gap-8 mt-12 pt-8 text-center text-xs">
+      <div class="border-t border-slate-400 pt-2">
+        <p class="font-bold">Negociador de Compras</p>
+        <p class="text-[10px] text-slate-500">Camilo Romero / Claudia Márquez</p>
+      </div>
+      <div class="border-t border-slate-400 pt-2">
+        <p class="font-bold">Recepción y Calidad en Planta</p>
+        <p class="text-[10px] text-slate-500">Jefe de Planta / Bodega</p>
+      </div>
+      <div class="border-t border-slate-400 pt-2">
+        <p class="font-bold">Visto Bueno Gerencia General</p>
+        <p class="text-[10px] text-slate-500">Dirección y Administración</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="xlsx.full.min.js"></script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+    }
+  </script>
+  <script src="proveedores_datos.js?v=5.3"></script>
+  <script src="app.js?v=5.3"></script>
+
+  <script>
+    window.abrirModalCelular = function() { document.getElementById("modalCelular").classList.remove("hidden"); };
+    window.cerrarModalCelular = function() { document.getElementById("modalCelular").classList.add("hidden"); };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => reg.update()).catch(() => {});
+      });
+    }
+  </script>
+
+</body>
+</html>
