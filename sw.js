@@ -1,10 +1,10 @@
-// Service Worker para AgroGestión - Estrategia Network-First (Siempre busca la versión más reciente)
-const CACHE_NAME = "agrogestion-v5.3";
+// Service Worker para AgroGestión - Estrategia Network-First con Fallback Seguro
+const CACHE_NAME = "agrogestion-v5.4";
 const ARCHIVOS_A_GUARDAR = [
   "./",
   "./index.html",
-  "./app.js?v=5.3",
-  "./proveedores_datos.js?v=5.3",
+  "./app.js?v=5.4",
+  "./proveedores_datos.js?v=5.4",
   "./xlsx.full.min.js",
   "./manifest.json",
   "./icono.svg"
@@ -25,7 +25,7 @@ self.addEventListener("activate", (e) => {
       return Promise.all(
         claves.map((clave) => {
           if (clave !== CACHE_NAME) {
-            return caches.delete(clave); // Borra caché viejo v1
+            return caches.delete(clave); // Limpiar cachés anteriores
           }
         })
       );
@@ -33,7 +33,8 @@ self.addEventListener("activate", (e) => {
   );
 });
 
-// Network-First: Siempre intenta descargar la versión nueva de Netlify; si no hay internet, usa el caché
+// Network-First Seguro:
+// NUNCA devolver HTML como fallback para scripts (.js) ni hojas de estilo (.css)
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
@@ -48,9 +49,23 @@ self.addEventListener("fetch", (e) => {
         }
         return respuestaRed;
       })
-      .catch(() => {
-        return caches.match(e.request).then((respCache) => {
-          return respCache || caches.match("./index.html");
+      .catch(async () => {
+        const respCache = await caches.match(e.request);
+        if (respCache) return respCache;
+
+        // Solo devolver index.html si es una navegación de página principal
+        const esNavegacionHtml = e.request.mode === "navigate" || 
+          (e.request.headers.get("accept") && e.request.headers.get("accept").includes("text/html"));
+
+        if (esNavegacionHtml) {
+          return caches.match("./index.html");
+        }
+
+        // Si es un script o estilo externo que falló, devolver error HTTP para no corromper la ejecución de JS
+        return new Response("Recurso offline no disponible", {
+          status: 503,
+          statusText: "Offline",
+          headers: { "Content-Type": "text/plain" }
         });
       })
   );

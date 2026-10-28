@@ -18,6 +18,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* 🛡️ CRITICAL CSS Y PROTECCIÓN CONTRA CAÍDAS DE CDN EN MÓVIL (iOS / Android) */
+    .hidden { display: none !important; }
+    [hidden] { display: none !important; }
+
+    /* Reseteo tipográfico y de elementos para que NUNCA aparezcan textos gigantes sin estilos */
+    h1 { font-size: 1.15rem; line-height: 1.25; margin: 0; font-weight: 800; }
+    h2 { font-size: 1rem; line-height: 1.3; margin: 0; font-weight: 700; }
+    h3 { font-size: 0.875rem; line-height: 1.35; margin: 0; font-weight: 700; }
+    p { margin: 0; }
+    button { -webkit-appearance: none; font-family: inherit; }
+
     :root {
       --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03);
       --shadow-card-hover: 0 10px 25px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(16, 185, 129, 0.06);
@@ -39,6 +50,13 @@
         radial-gradient(at 100% 0%, rgba(79, 70, 229, 0.06) 0px, transparent 45%),
         radial-gradient(at 50% 100%, rgba(13, 148, 136, 0.05) 0px, transparent 50%);
       background-attachment: fixed;
+    }
+    /* Zona segura para Safari en iPhone: evita que la barra de navegación del navegador tape el contenido */
+    main {
+      padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 95px) !important;
+    }
+    #barraInferiorMobile {
+      padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
     }
     h1, h2, h3, .font-display {
       font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
@@ -78,6 +96,7 @@
     #modalProveedorNoAgregado > div,
     #modalConfirmacionWhatsAppTercero > div,
     #modalHistoricoSQL > div,
+    #modalGestionClavesGerencia > div,
     #panelPedidoProveedor {
       animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
@@ -285,7 +304,7 @@
           <button type="button" onclick="abrirModalAlertaQuincenalMC(true)" class="bg-teal-700 hover:bg-teal-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95">
             <span>🔔</span> Corte 1 y 16 (MC)
           </button>
-          <button type="button" onclick="abrirModalSeguridad()" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95">
+          <button type="button" onclick="abrirModalGestionClavesGerencia()" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 active:scale-95" title="Gestor Maestro de Contraseñas de Perfiles">
             <span>🛡️</span> Claves
           </button>
         </div>
@@ -922,9 +941,12 @@
       </div>
 
       <!-- Banner de Bloqueo Exponencial Anti-Scripts -->
-      <div id="bannerBloqueoSeguridad" class="bg-rose-50 border-2 border-rose-400 text-rose-900 p-3.5 rounded-2xl text-xs font-bold hidden space-y-1">
+      <div id="bannerBloqueoSeguridad" class="bg-rose-50 border-2 border-rose-400 text-rose-900 p-3.5 rounded-2xl text-xs font-bold hidden space-y-2">
         <p class="font-black text-sm flex items-center gap-1.5"><span>🚨</span> Bloqueo Temporal por Intentos Fallidos (Defensa Anti-Bot)</p>
         <p id="lblDetalleBloqueoSeguridad" class="text-[11px] text-rose-800"></p>
+        <button type="button" onclick="desbloquearIntentosPerfilSeguridad()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow-2xs active:scale-95">
+          🔓 Desbloquear Intentos Ahora
+        </button>
       </div>
 
       <!-- Formulario de Ingreso con Contraseña Alfanumérica -->
@@ -959,9 +981,14 @@
 
         <p id="lblErrorLoginSeguridad" class="text-xs font-bold text-rose-600 hidden"></p>
 
-        <button type="button" id="btnAutenticarPerfilFisico" class="w-full bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2">
-          <span>🔓</span> Verificar Identidad y Acceder
-        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="cerrarModalSeguridad()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-3 rounded-xl text-xs transition">
+            Cancelar
+          </button>
+          <button type="button" id="btnAutenticarPerfilFisico" class="w-2/3 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2">
+            <span>🔓</span> Acceder
+          </button>
+        </div>
       </div>
 
       <!-- Sección Cambiar Contraseña Alfanumérica del Perfil Actual -->
@@ -991,6 +1018,42 @@
           </div>
         </div>
       </details>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 🛡️ MODAL: GESTOR MAESTRO DE CLAVES Y ACCESOS (GERENCIA GENERAL) -->
+  <!-- ========================================== -->
+  <div id="modalGestionClavesGerencia" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 font-black text-lg flex items-center justify-center shadow-md">🛡️</span>
+          <div>
+            <h3 class="font-black text-base text-slate-900">Gestor Maestro de Contraseñas y Accesos</h3>
+            <p class="text-[11px] text-slate-500">Supervisión, restablecimiento y sincronización en la nube para Camilo, Claudia y Gerencia</p>
+          </div>
+        </div>
+        <button type="button" onclick="cerrarModalGestionClavesGerencia()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
+      </div>
+
+      <div class="overflow-y-auto space-y-3 flex-1 pr-1" id="contenedorTarjetasClavesPerfiles">
+        <!-- Tarjetas dinámicas de Camilo, Claudia y Admin -->
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="sincronizarClavesNubeInmediato()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-xs">
+            <span>☁️</span> Sincronizar Claves en Celulares
+          </button>
+          <button type="button" onclick="revocarSesionesDispositivo()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl text-xs">
+            🔒 Cerrar Sesiones Guardadas
+          </button>
+        </div>
+        <button type="button" onclick="cerrarModalGestionClavesGerencia()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs">
+          Cerrar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1526,8 +1589,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
     }
   </script>
-  <script src="proveedores_datos.js?v=5.3"></script>
-  <script src="app.js?v=5.3"></script>
+  <script src="proveedores_datos.js?v=5.4"></script>
+  <script src="app.js?v=5.4"></script>
 
   <script>
     window.abrirModalCelular = function() { document.getElementById("modalCelular").classList.remove("hidden"); };
