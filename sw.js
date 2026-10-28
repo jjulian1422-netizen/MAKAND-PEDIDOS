@@ -1,10 +1,10 @@
 // Service Worker para AgroGestión - Estrategia Network-First con Fallback Seguro
-const CACHE_NAME = "agrogestion-v5.4";
+const CACHE_NAME = "agrogestion-v5.5";
 const ARCHIVOS_A_GUARDAR = [
   "./",
   "./index.html",
-  "./app.js?v=5.4",
-  "./proveedores_datos.js?v=5.4",
+  "./app.js?v=5.5",
+  "./proveedores_datos.js?v=5.5",
   "./xlsx.full.min.js",
   "./manifest.json",
   "./icono.svg"

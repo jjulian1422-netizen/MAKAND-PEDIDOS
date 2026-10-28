@@ -30,7 +30,7 @@ let estado = {
   pedidos: [],
   entregas: [],
   fecha: new Date().toISOString().split('T')[0],
-  perfilActivo: "camilo",
+  perfilActivo: null,
   proveedorSeleccionado: null,
   filasProductos: [],
   filtroVistaGerencia: "todos",
@@ -83,13 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderizarBuzonEntregas();
   if (typeof verificarAlertaQuincenalMC === "function") verificarAlertaQuincenalMC(false);
   if (typeof inicializarMotorSincronizacionNube === "function") inicializarMotorSincronizacionNube();
-
-  // Exigir contraseña OBLIGATORIA al abrir la aplicación si el perfil no está autenticado
-  if (typeof verificarSesionAutorizadaPerfil === "function" && estado.perfilActivo && !verificarSesionAutorizadaPerfil(estado.perfilActivo)) {
-    setTimeout(() => {
-      solicitarAutenticacionPerfil(estado.perfilActivo);
-    }, 250);
-  }
 });
 
 // ==========================================
@@ -99,18 +92,28 @@ function inicializarPerfil() {
   const urlParams = new URLSearchParams(window.location.search);
   const userParam = urlParams.get("usuario");
   if (userParam && PERFILES[userParam.toLowerCase()]) {
-    estado.perfilActivo = userParam.toLowerCase();
-    localStorage.setItem("agri_perfil_activo", estado.perfilActivo);
-    return;
+    const id = userParam.toLowerCase();
+    if (typeof verificarSesionAutorizadaPerfil === "function" && verificarSesionAutorizadaPerfil(id)) {
+      estado.perfilActivo = id;
+      localStorage.setItem("agri_perfil_activo", id);
+      return;
+    } else {
+      estado.perfilActivo = null;
+      setTimeout(() => { solicitarAutenticacionPerfil(id); }, 150);
+      return;
+    }
   }
 
   const perfilGuardado = localStorage.getItem("agri_perfil_activo");
-  if (perfilGuardado && PERFILES[perfilGuardado]) {
+  if (perfilGuardado && PERFILES[perfilGuardado] && typeof verificarSesionAutorizadaPerfil === "function" && verificarSesionAutorizadaPerfil(perfilGuardado)) {
     estado.perfilActivo = perfilGuardado;
   } else {
+    // Si no hay perfil con sesión autorizada, DEJAR ELEGIR al usuario en vez de asumir Camilo
+    estado.perfilActivo = null;
+    localStorage.removeItem("agri_perfil_activo");
     setTimeout(() => {
       abrirModalSeleccionPerfil();
-    }, 300);
+    }, 200);
   }
 }
 
@@ -129,6 +132,7 @@ window.seleccionarPerfilUsuario = function(idPerfil, omitirAuth = false) {
   estado.perfilActivo = idPerfil;
   localStorage.setItem("agri_perfil_activo", idPerfil);
   cerrarModalSeleccionPerfil();
+  cerrarModalSeguridad();
   actualizarHeaderPerfil();
   renderizarSelectFiltroProductos();
   renderizarSemaforoCobertura();
@@ -140,18 +144,28 @@ window.seleccionarPerfilUsuario = function(idPerfil, omitirAuth = false) {
 };
 
 function actualizarHeaderPerfil() {
-  const p = PERFILES[estado.perfilActivo];
   const lblNombre = document.getElementById("lblPerfilActivoNombre");
   const badgeRol = document.getElementById("lblPerfilActivoRol");
-  if (lblNombre) lblNombre.innerText = p.nombre;
-  if (badgeRol) badgeRol.innerText = p.rol;
-
-  // Privacidad Estricta del Histórico, Base SQL y Buzón: Solo visible para Gerencia General
   const btnBuzon = document.getElementById("btnBuzonHeader");
   const btnSql = document.getElementById("btnSqlHeader");
   const panelGerencia = document.getElementById("panelResumenGerencia");
   const btnAlertaMC = document.getElementById("btnAlertaQuincenalHeader");
 
+  if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
+    if (lblNombre) lblNombre.innerText = "Elegir Perfil";
+    if (badgeRol) badgeRol.innerText = "Toca para entrar";
+    if (btnBuzon) btnBuzon.classList.add("hidden");
+    if (btnSql) btnSql.classList.add("hidden");
+    if (panelGerencia) panelGerencia.classList.add("hidden");
+    if (btnAlertaMC) btnAlertaMC.classList.add("hidden");
+    return;
+  }
+
+  const p = PERFILES[estado.perfilActivo];
+  if (lblNombre) lblNombre.innerText = p.nombre;
+  if (badgeRol) badgeRol.innerText = p.rol;
+
+  // Privacidad Estricta del Histórico, Base SQL y Buzón: Solo visible para Gerencia General
   if (estado.perfilActivo === "admin") {
     if (btnBuzon) btnBuzon.classList.remove("hidden");
     if (btnSql) btnSql.classList.remove("hidden");
@@ -428,6 +442,11 @@ function renderizarSelectFiltroProductos() {
   const select = document.getElementById("selectFiltroProducto");
   if (!select) return;
 
+  if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
+    select.innerHTML = `<option value="">-- Selecciona tu perfil arriba para buscar productos --</option>`;
+    return;
+  }
+
   const prods = obtenerProductosDelPerfil(estado.perfilActivo);
 
   select.innerHTML = `
@@ -585,6 +604,13 @@ function renderizarSemaforoCobertura() {
   const contenedor = document.getElementById("contenedorSemaforo");
   if (!contenedor) return;
 
+  if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
+    contenedor.innerHTML = `<p class="text-xs text-slate-400 italic py-1">Selecciona tu perfil arriba para ver tu semáforo de productos asignados.</p>`;
+    const lblResumen = document.getElementById("lblSemaforoResumen");
+    if (lblResumen) lblResumen.innerText = "Sin perfil activo";
+    return;
+  }
+
   const prodsPerfil = obtenerProductosDelPerfil(estado.perfilActivo);
 
   const pedidosFecha = estado.pedidos.filter(p => {
@@ -634,6 +660,11 @@ function renderizarListaProveedoresSugeridos() {
   const lblDia = document.getElementById("lblDiaProgramacion");
   if (lblDia) lblDia.innerText = diaActual;
   if (!contenedor) return;
+
+  if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
+    contenedor.innerHTML = `<span class="text-xs text-slate-400 py-1 italic">Pulsa en "Elegir Perfil" arriba para ver tus agricultores programados.</span>`;
+    return;
+  }
 
   const perfil = PERFILES[estado.perfilActivo];
 
@@ -1735,6 +1766,20 @@ function renderizarPedidosDelDia() {
   const badgeCountBottom = document.getElementById("badgeCountBottom");
   if (badgeCountMobile) badgeCountMobile.innerText = pedidosFecha.length;
   if (badgeCountBottom) badgeCountBottom.innerText = pedidosFecha.length;
+
+  if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
+    contenedor.innerHTML = `
+      <div class="text-center py-12 text-slate-400 surface-card rounded-3xl p-6 sm:p-8">
+        <div class="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">👤</div>
+        <p class="text-sm sm:text-base font-extrabold text-slate-800">Selecciona quién está diligenciando hoy</p>
+        <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">Pulsa el botón de abajo para identificarte con tu perfil y contraseña.</p>
+        <button type="button" onclick="abrirModalSeleccionPerfil()" class="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-xl text-xs shadow-xs active:scale-95">
+          Elegir Mi Perfil
+        </button>
+      </div>
+    `;
+    return;
+  }
 
   if (pedidosFecha.length === 0) {
     contenedor.innerHTML = `
@@ -3033,20 +3078,28 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     }
   }
 
+  const sesionesEnMemoria = new Set();
+
   window.verificarSesionAutorizadaPerfil = function(idPerfil) {
     if (!idPerfil) return false;
+    if (sesionesEnMemoria.has(idPerfil)) return true;
     try {
       const sesionesRaw = localStorage.getItem("agri_sesiones_autorizadas_v54");
       if (!sesionesRaw) return false;
       const sesiones = JSON.parse(sesionesRaw);
-      return Boolean(sesiones[idPerfil]);
+      if (sesiones && sesiones[idPerfil]) {
+        sesionesEnMemoria.add(idPerfil);
+        return true;
+      }
     } catch (e) {
       return false;
     }
+    return false;
   };
 
   function autorizarSesionDispositivo(idPerfil, recordar) {
-    if (!recordar || !idPerfil) return;
+    if (!idPerfil) return;
+    sesionesEnMemoria.add(idPerfil);
     try {
       const sesionesRaw = localStorage.getItem("agri_sesiones_autorizadas_v54");
       const sesiones = sesionesRaw ? JSON.parse(sesionesRaw) : {};
@@ -3059,19 +3112,28 @@ window.subirExcelActualizacionPreciosMC = function(event) {
   }
 
   window.revocarSesionesDispositivo = function() {
+    sesionesEnMemoria.clear();
     localStorage.removeItem("agri_sesiones_autorizadas_v54");
     localStorage.removeItem("agri_sesiones_autorizadas_v52");
     registrarEventoAuditoriaSeguridad("SESION_CERRADA", "Se cerraron todas las sesiones recordadas en este dispositivo.");
     mostrarToast("🔒 Sesiones cerradas. Se solicitará contraseña para ingresar.");
     cerrarModalSeguridad();
     if (typeof cerrarModalGestionClavesGerencia === "function") cerrarModalGestionClavesGerencia();
+    estado.perfilActivo = null;
+    localStorage.removeItem("agri_perfil_activo");
+    actualizarHeaderPerfil();
+    renderizarSelectFiltroProductos();
+    renderizarSemaforoCobertura();
+    renderizarListaProveedoresSugeridos();
+    renderizarPedidosDelDia();
     setTimeout(() => {
       abrirModalSeleccionPerfil();
-    }, 250);
+    }, 200);
   };
 
   window.solicitarAutenticacionPerfil = function(idPerfilObjetivo) {
-    perfilPendienteAutenticacion = idPerfilObjetivo || estado.perfilActivo;
+    cerrarModalSeleccionPerfil();
+    perfilPendienteAutenticacion = idPerfilObjetivo || "camilo";
     const modal = document.getElementById("modalLoginSeguridad");
     const badge = document.getElementById("badgePerfilSolicitadoAuth");
     const inputClave = document.getElementById("inputClaveSeguridad");
@@ -3105,18 +3167,22 @@ window.subirExcelActualizacionPreciosMC = function(event) {
   window.abrirModalSeguridad = function() {
     if (estado.perfilActivo === "admin") {
       abrirModalGestionClavesGerencia();
-    } else {
+    } else if (estado.perfilActivo) {
       solicitarAutenticacionPerfil(estado.perfilActivo);
+    } else {
+      abrirModalSeleccionPerfil();
     }
   };
 
   window.cerrarModalSeguridad = function() {
     const modal = document.getElementById("modalLoginSeguridad");
     if (modal) modal.classList.add("hidden");
-    if (estado.perfilActivo && typeof verificarSesionAutorizadaPerfil === "function" && !verificarSesionAutorizadaPerfil(estado.perfilActivo)) {
-      setTimeout(() => {
-        abrirModalSeleccionPerfil();
-      }, 150);
+  };
+
+  window.cancelarAutenticacionPerfil = function() {
+    cerrarModalSeguridad();
+    if (!estado.perfilActivo) {
+      abrirModalSeleccionPerfil();
     }
   };
 
@@ -3192,6 +3258,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 
         registrarEventoAuditoriaSeguridad("ACCESO_AUTORIZADO", `Ingreso verificado al perfil ${PERFILES[perfilPendienteAutenticacion].nombre}`);
         cerrarModalSeguridad();
+        cerrarModalSeleccionPerfil();
         window.seleccionarPerfilUsuario(perfilPendienteAutenticacion, true);
       } else {
         intentosFallidos++;

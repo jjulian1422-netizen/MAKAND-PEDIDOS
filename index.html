@@ -199,8 +199,8 @@
           <button type="button" onclick="abrirModalSeleccionPerfil()" class="flex items-center gap-1 sm:gap-2 bg-white hover:bg-emerald-50/70 border border-slate-200/90 hover:border-emerald-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl transition shadow-2xs active:scale-95" title="Cambiar negociador">
             <span class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-[11px] sm:text-xs flex items-center justify-center shadow-2xs shrink-0">👤</span>
             <div class="text-left min-w-0">
-              <p id="lblPerfilActivoNombre" class="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate max-w-[55px] sm:max-w-none">Camilo Romero</p>
-              <p id="lblPerfilActivoRol" class="text-[9px] sm:text-[10px] text-emerald-700 font-bold leading-tight mt-0.5 hidden sm:block">Negociador</p>
+              <p id="lblPerfilActivoNombre" class="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate max-w-[55px] sm:max-w-none">Elegir Perfil</p>
+              <p id="lblPerfilActivoRol" class="text-[9px] sm:text-[10px] text-emerald-700 font-bold leading-tight mt-0.5 hidden sm:block">Toca para entrar</p>
             </div>
             <span class="text-[10px] text-slate-400 font-bold ml-0.5">▾</span>
           </button>
@@ -937,7 +937,7 @@
             <p class="text-[11px] text-slate-500" id="lblSubtituloModalSeguridad">Protección PBKDF2-SHA256 + Anti-Fuerza Bruta Automatizada</p>
           </div>
         </div>
-        <button type="button" onclick="cerrarModalSeguridad()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
+        <button type="button" onclick="cancelarAutenticacionPerfil()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2">✕</button>
       </div>
 
       <!-- Banner de Bloqueo Exponencial Anti-Scripts -->
@@ -982,7 +982,7 @@
         <p id="lblErrorLoginSeguridad" class="text-xs font-bold text-rose-600 hidden"></p>
 
         <div class="flex items-center gap-2">
-          <button type="button" onclick="cerrarModalSeguridad()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-3 rounded-xl text-xs transition">
+          <button type="button" onclick="cancelarAutenticacionPerfil()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-3 rounded-xl text-xs transition">
             Cancelar
           </button>
           <button type="button" id="btnAutenticarPerfilFisico" class="w-2/3 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2">
@@ -1589,8 +1589,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
     }
   </script>
-  <script src="proveedores_datos.js?v=5.4"></script>
-  <script src="app.js?v=5.4"></script>
+  <script src="proveedores_datos.js?v=5.5"></script>
+  <script src="app.js?v=5.5"></script>
 
   <script>
     window.abrirModalCelular = function() { document.getElementById("modalCelular").classList.remove("hidden"); };
