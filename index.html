@@ -809,8 +809,8 @@
 
       </div>
 
-      <p class="text-[10px] text-slate-400 text-center pt-2">
-        El teléfono recordará tu elección automáticamente.
+      <p class="text-[10px] text-slate-500 text-center pt-2 font-medium">
+        🔒 Por seguridad corporativa, siempre se solicitará la contraseña para acceder a cada perfil.
       </p>
     </div>
   </div>
@@ -974,10 +974,10 @@
           </div>
         </div>
 
-        <label class="flex items-center gap-2 text-xs text-slate-700 font-semibold cursor-pointer select-none">
-          <input type="checkbox" id="chkRecordarSesionDispositivo" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500">
-          Recordar sesión autorizada en este teléfono/computador
-        </label>
+        <div class="flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 font-medium">
+          <span class="text-emerald-700 font-bold">🔒</span>
+          <span>Autenticación obligatoria siempre: no se almacena acceso sin contraseña.</span>
+        </div>
 
         <p id="lblErrorLoginSeguridad" class="text-xs font-bold text-rose-600 hidden"></p>
 
@@ -1010,7 +1010,7 @@
           </div>
           <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
             <button type="button" onclick="revocarSesionesDispositivo()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl text-[11px]">
-              🔒 Cerrar Sesiones Guardadas
+              🔒 Salir / Cerrar Perfil
             </button>
             <button type="button" id="btnGuardarNuevaClaveFisico" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-xl text-xs">
               💾 Actualizar Contraseña
@@ -1047,7 +1047,7 @@
             <span>☁️</span> Sincronizar Claves en Celulares
           </button>
           <button type="button" onclick="revocarSesionesDispositivo()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-2 rounded-xl text-xs">
-            🔒 Cerrar Sesiones Guardadas
+            🔒 Salir / Cerrar Perfil
           </button>
         </div>
         <button type="button" onclick="cerrarModalGestionClavesGerencia()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs">

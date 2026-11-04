@@ -89,44 +89,38 @@ document.addEventListener("DOMContentLoaded", () => {
 // GESTIÓN DE PERFILES Y SESIONES CON SEGURIDAD
 // ==========================================
 function inicializarPerfil() {
+  // Limpiar cualquier sesión previa almacenada para asegurar que SIEMPRE se pida la contraseña
+  try {
+    localStorage.removeItem("agri_perfil_activo");
+    localStorage.removeItem("agri_sesiones_autorizadas_v54");
+    localStorage.removeItem("agri_sesiones_autorizadas_v52");
+  } catch (e) {}
+  estado.perfilActivo = null;
+
   const urlParams = new URLSearchParams(window.location.search);
   const userParam = urlParams.get("usuario");
   if (userParam && PERFILES[userParam.toLowerCase()]) {
     const id = userParam.toLowerCase();
-    if (typeof verificarSesionAutorizadaPerfil === "function" && verificarSesionAutorizadaPerfil(id)) {
-      estado.perfilActivo = id;
-      localStorage.setItem("agri_perfil_activo", id);
-      return;
-    } else {
-      estado.perfilActivo = null;
-      setTimeout(() => { solicitarAutenticacionPerfil(id); }, 150);
-      return;
-    }
+    setTimeout(() => {
+      solicitarAutenticacionPerfil(id);
+    }, 150);
+    return;
   }
 
-  const perfilGuardado = localStorage.getItem("agri_perfil_activo");
-  if (perfilGuardado && PERFILES[perfilGuardado] && typeof verificarSesionAutorizadaPerfil === "function" && verificarSesionAutorizadaPerfil(perfilGuardado)) {
-    estado.perfilActivo = perfilGuardado;
-  } else {
-    // Si no hay perfil con sesión autorizada, DEJAR ELEGIR al usuario en vez de asumir Camilo
-    estado.perfilActivo = null;
-    localStorage.removeItem("agri_perfil_activo");
-    setTimeout(() => {
-      abrirModalSeleccionPerfil();
-    }, 200);
-  }
+  // Siempre solicitar la selección de perfil y contraseña al abrir la aplicación
+  setTimeout(() => {
+    abrirModalSeleccionPerfil();
+  }, 200);
 }
 
 window.seleccionarPerfilUsuario = function(idPerfil, omitirAuth = false) {
   if (!PERFILES[idPerfil]) return;
 
-  // Control estricto de acceso: Exigir contraseña OBLIGATORIA si el perfil no tiene sesión autorizada
-  if (!omitirAuth && typeof verificarSesionAutorizadaPerfil === "function") {
-    if (!verificarSesionAutorizadaPerfil(idPerfil)) {
-      cerrarModalSeleccionPerfil();
-      solicitarAutenticacionPerfil(idPerfil);
-      return;
-    }
+  // Control estricto de acceso: Exigir contraseña OBLIGATORIA SIEMPRE para todos los perfiles
+  if (!omitirAuth) {
+    cerrarModalSeleccionPerfil();
+    solicitarAutenticacionPerfil(idPerfil);
+    return;
   }
 
   estado.perfilActivo = idPerfil;
@@ -3081,33 +3075,15 @@ window.subirExcelActualizacionPreciosMC = function(event) {
   const sesionesEnMemoria = new Set();
 
   window.verificarSesionAutorizadaPerfil = function(idPerfil) {
-    if (!idPerfil) return false;
-    if (sesionesEnMemoria.has(idPerfil)) return true;
-    try {
-      const sesionesRaw = localStorage.getItem("agri_sesiones_autorizadas_v54");
-      if (!sesionesRaw) return false;
-      const sesiones = JSON.parse(sesionesRaw);
-      if (sesiones && sesiones[idPerfil]) {
-        sesionesEnMemoria.add(idPerfil);
-        return true;
-      }
-    } catch (e) {
-      return false;
-    }
+    // Por requerimiento corporativo estricto, SIEMPRE se solicita la contraseña de todos los perfiles
     return false;
   };
 
   function autorizarSesionDispositivo(idPerfil, recordar) {
-    if (!idPerfil) return;
-    sesionesEnMemoria.add(idPerfil);
+    // No persistir sesiones automáticas: siempre se exigirá contraseña al ingresar
     try {
-      const sesionesRaw = localStorage.getItem("agri_sesiones_autorizadas_v54");
-      const sesiones = sesionesRaw ? JSON.parse(sesionesRaw) : {};
-      sesiones[idPerfil] = {
-        autorizadoEn: new Date().toISOString(),
-        integridad: "SHA256_OK"
-      };
-      localStorage.setItem("agri_sesiones_autorizadas_v54", JSON.stringify(sesiones));
+      localStorage.removeItem("agri_sesiones_autorizadas_v54");
+      localStorage.removeItem("agri_sesiones_autorizadas_v52");
     } catch (e) {}
   }
 
@@ -3115,8 +3091,8 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     sesionesEnMemoria.clear();
     localStorage.removeItem("agri_sesiones_autorizadas_v54");
     localStorage.removeItem("agri_sesiones_autorizadas_v52");
-    registrarEventoAuditoriaSeguridad("SESION_CERRADA", "Se cerraron todas las sesiones recordadas en este dispositivo.");
-    mostrarToast("🔒 Sesiones cerradas. Se solicitará contraseña para ingresar.");
+    registrarEventoAuditoriaSeguridad("SESION_CERRADA", "Se cerró la sesión activa.");
+    mostrarToast("🔒 Sesión cerrada. Se solicitará contraseña para ingresar.");
     cerrarModalSeguridad();
     if (typeof cerrarModalGestionClavesGerencia === "function") cerrarModalGestionClavesGerencia();
     estado.perfilActivo = null;
@@ -3229,15 +3205,15 @@ window.subirExcelActualizacionPreciosMC = function(event) {
       const hashEsperado = hashesGuardados[perfilPendienteAutenticacion];
 
       let esValida = false;
-      // 1. Acceso ultra-rápido si coincide con la clave corporativa inicial
-      if (claveIngresada === claveDefault) {
-        esValida = true;
-      } else if (hashEsperado) {
-        // 2. Si hay hash personalizado guardado
+      if (hashEsperado) {
+        // 1. Si hay hash personalizado guardado
         const hashIngresado = await derivarHashPBKDF2(claveIngresada, perfilPendienteAutenticacion);
         if (hashIngresado === hashEsperado) {
           esValida = true;
         }
+      } else if (claveIngresada === claveDefault) {
+        // 2. Contraseña corporativa inicial por defecto
+        esValida = true;
       } else {
         // 3. Fallback de derivación PBKDF2
         const hashIngresado = await derivarHashPBKDF2(claveIngresada, perfilPendienteAutenticacion);
@@ -3253,8 +3229,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
         guardarEstadoBloqueo();
         actualizarBannerBloqueoUI();
 
-        const recordar = chkRecordar ? chkRecordar.checked : true;
-        autorizarSesionDispositivo(perfilPendienteAutenticacion, recordar);
+        autorizarSesionDispositivo(perfilPendienteAutenticacion, false);
 
         registrarEventoAuditoriaSeguridad("ACCESO_AUTORIZADO", `Ingreso verificado al perfil ${PERFILES[perfilPendienteAutenticacion].nombre}`);
         cerrarModalSeguridad();
@@ -3372,8 +3347,8 @@ window.subirExcelActualizacionPreciosMC = function(event) {
                 <p class="text-[11px] text-slate-500">${p.rolDetalle}</p>
               </div>
             </div>
-            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full ${autorizadaEnEsteEquipo ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-600'}">
-              ${autorizadaEnEsteEquipo ? '🟢 Sesión Activa' : '⚪ Requiere Clave'}
+            <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              🔒 Requiere Contraseña
             </span>
           </div>
 
@@ -3455,8 +3430,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 
   window.entrarDirectoComoPerfilGerencia = function(idPerfil) {
     cerrarModalGestionClavesGerencia();
-    autorizarSesionDispositivo(idPerfil, true);
-    window.seleccionarPerfilUsuario(idPerfil, true);
+    solicitarAutenticacionPerfil(idPerfil);
   };
 
   window.sincronizarClavesNubeInmediato = async function() {
@@ -3468,8 +3442,9 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 
   window.inicializarModuloCiberseguridad = function() {
     cargarEstadoBloqueo();
-    // Limpieza de claves obsoletas para asegurar que NINGÚN perfil entre sin contraseña
+    // Limpieza de claves y sesiones para asegurar que SIEMPRE se pida contraseña
     try {
+      localStorage.removeItem("agri_sesiones_autorizadas_v54");
       localStorage.removeItem("agri_sesiones_autorizadas_v52");
     } catch(e) {}
 
