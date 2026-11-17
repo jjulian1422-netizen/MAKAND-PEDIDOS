@@ -31,7 +31,7 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CLAUDIA MARQUEZ",
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
     productos: [
-      { producto: "Apio", precio: 10000, unidadMedida: "Doc", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" }
+      { producto: "Apio", precio: 14000, unidadMedida: "Doc", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" }
     ]
   },
   {
@@ -47,7 +47,7 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CLAUDIA MARQUEZ",
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
     productos: [
-      { producto: "Brócoli", precio: 0, unidadMedida: "Unidades", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 50 DIAS", notas: "corte - con la fecha de la factura" }
+      { producto: "Brócoli", precio: 0, unidadMedida: "corte", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 50 DIAS", notas: "corte - con la fecha de la factura" }
     ]
   },
   {
@@ -97,7 +97,7 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CLAUDIA MARQUEZ",
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
     productos: [
-      { producto: "Espinaca Bogotana", precio: 3200, unidadMedida: "Kg", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 40 DIAS", notas: "Lunes/Sábado/Domingo: Transporte; Martes a Viernes: Agricultor" }
+      { producto: "Espinaca", precio: 5500, unidadMedida: "Kg", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 40 DIAS", notas: "Lunes/Sábado/Domingo: Transporte; Martes a Viernes: Agricultor" }
     ]
   },
   {
@@ -114,8 +114,7 @@ const CATALOGO_MAESTRO = [
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
     productos: [
       { producto: "Perejil Liso", precio: 700, unidadMedida: "Und", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 30 DIAS", notas: "" },
-      { producto: "Perejil Crespo", precio: 700, unidadMedida: "Und", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 30 DIAS", notas: "" },
-      { producto: "Espinaca", precio: 2250, unidadMedida: "Kg", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 30 DIAS", notas: "" }
+      { producto: "Perejil Crespo", precio: 700, unidadMedida: "Und", negociador: "Maria Claudia Marquez O", vigente: true, condicion: "CREDITO 30 DIAS", notas: "" }
     ]
   },
   {
@@ -131,7 +130,7 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CAMILO ROMERO",
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"],
     productos: [
-      { producto: "Espinaca Bolsa", precio: 3000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" },
+      { producto: "Espinaca", precio: 3800, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" },
       { producto: "Espinaca Baby", precio: 5232, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" },
       { producto: "Rúgula", precio: 5232, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 45 DIAS", notas: "" }
     ]
@@ -149,9 +148,9 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CAMILO ROMERO",
     diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
     productos: [
-      { producto: "Espinaca Bolsa", precio: 3800, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" },
-      { producto: "Espinaca Baby", precio: 5450, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "$500 (+) festivos" },
-      { producto: "Rúgula", precio: 5450, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
+      { producto: "Espinaca", precio: 3800, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" },
+      { producto: "Espinaca Baby", precio: 5450, recargoFestivo: 500, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "$500 (+) domingos y festivos" },
+      { producto: "Rúgula", precio: 5450, recargoFestivo: 500, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "$500 (+) domingos y festivos" }
     ]
   },
   {
@@ -381,7 +380,89 @@ const CATALOGO_MAESTRO = [
     encargadoLogistica: "CAMILO ROMERO",
     diasEntrega: ["Lunes", "Miercoles", "Viernes"],
     productos: [
+      { producto: "Espinaca Baby", precio: 8000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" },
+      { producto: "Rúgula", precio: 8000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" },
       { producto: "Espinaca", precio: 3609, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
+    ]
+  },
+  {
+    id: "agr-rembrandt-bartels",
+    nombreComun: "Rembrandt Bartels",
+    razonSocialFactura: "BARTELS ROJAS REMBRANDT LEONARDO",
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: "11:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: [
+      { producto: "Alcachofa", precio: 9000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "", notas: "" }
+    ]
+  },
+  {
+    id: "agr-diego-bernal",
+    nombreComun: "Diego Bernal",
+    razonSocialFactura: "BERNAL ORJUELA KAREN LICETH",
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: "07:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: [
+      { producto: "Tomate Cherry", precio: 5000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
+    ]
+  },
+  {
+    id: "agr-andres-cardenas",
+    nombreComun: "Andrés Cárdenas",
+    razonSocialFactura: "CARDENAS LOPEZ ANDRES FERNANDO",
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: "07:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: [
+      { producto: "Tomate Cherry", precio: 3500, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
+    ]
+  },
+  {
+    id: "agr-julian-padilla",
+    nombreComun: "Julián Padilla",
+    razonSocialFactura: "PADILLA ALMANZA JULIAN ANDRES",
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: "07:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: [
+      { producto: "Tomate Cherry", precio: 5000, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
+    ]
+  },
+  {
+    id: "agr-jimena-bernal",
+    nombreComun: "Jimena Bernal",
+    razonSocialFactura: "VELASCO GROUP SAS",
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: "07:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: [
+      { producto: "Tomate Cherry", precio: 3750, unidadMedida: "Kg", negociador: "Camilo Romero", vigente: true, condicion: "CREDITO 35 DIAS", notas: "" }
     ]
   },
   {
@@ -427,6 +508,7 @@ const PORTAFOLIO_PRODUCTOS_CLAVE = [
   "Brócoli",
   "Coliflor",
   "Apio",
+  "Alcachofa",
   "Espinaca",
   "Espinaca Baby",
   "Espinaca Bolsa",
@@ -436,6 +518,7 @@ const PORTAFOLIO_PRODUCTOS_CLAVE = [
   "Perejil Liso",
   "Perejil Crespo",
   "H Verde (Lechuga)",
+  "Morada Crespa Falbala",
   "Salanova Verde",
   "Salanova Morada"
 ];
@@ -452,8 +535,10 @@ const CLIENTES_CATALOGO = [
 
 const UNIDADES_CATALOGO = [
   "Kg",
+  "Und",
   "Unidades",
   "Cajas",
+  "caja",
   "Doc",
   "At",
   "corte",

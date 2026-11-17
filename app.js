@@ -30,6 +30,7 @@ let estado = {
   pedidos: [],
   entregas: [],
   fecha: new Date().toISOString().split('T')[0],
+  esFestivo: false,
   perfilActivo: null,
   proveedorSeleccionado: null,
   filasProductos: [],
@@ -170,9 +171,9 @@ function actualizarHeaderPerfil() {
     if (panelGerencia) panelGerencia.classList.add("hidden");
   }
 
-  // Botón Alerta Corte 1 y 16 visible para Sra. Claudia Márquez y Gerencia
+  // Botón Actualización de Precios / Corte 1 y 16 visible para todos los perfiles autenticados
   if (btnAlertaMC) {
-    if (estado.perfilActivo === "claudia" || estado.perfilActivo === "admin") {
+    if (estado.perfilActivo && PERFILES[estado.perfilActivo]) {
       btnAlertaMC.classList.remove("hidden");
     } else {
       btnAlertaMC.classList.add("hidden");
@@ -191,11 +192,48 @@ window.cerrarModalSeleccionPerfil = function() {
 // ==========================================
 // CARGA Y PERSISTENCIA DE DATOS
 // ==========================================
+const CATALOGO_VERSION_ACTUAL = "v5.7_20261117";
+
+function normalizarTextoBasico(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fusionarCatalogoMaestroConLocal(catalogoLocal) {
+  const maestroCopia = JSON.parse(JSON.stringify(CATALOGO_MAESTRO));
+  const idsMaestro = new Set(maestroCopia.map(p => p.id));
+  const clavesMaestro = new Set(
+    maestroCopia.map(p => `${normalizarTextoBasico(p.razonSocialFactura)}|${normalizarTextoBasico(p.nombreComun)}`)
+  );
+
+  const personalizados = (Array.isArray(catalogoLocal) ? catalogoLocal : []).filter(p => {
+    if (!p || !p.id) return false;
+    if (idsMaestro.has(p.id)) return false;
+    const clave = `${normalizarTextoBasico(p.razonSocialFactura)}|${normalizarTextoBasico(p.nombreComun)}`;
+    return !clavesMaestro.has(clave);
+  });
+
+  return [...maestroCopia, ...personalizados];
+}
+
 function cargarDatosIniciales() {
   const catalogoGuardado = localStorage.getItem("agri_catalogo_maestro_v4");
+  const versionGuardada = localStorage.getItem("agri_catalogo_version");
+
   if (catalogoGuardado) {
     try {
-      estado.catalogo = JSON.parse(catalogoGuardado);
+      const parsed = JSON.parse(catalogoGuardado);
+      if (versionGuardada !== CATALOGO_VERSION_ACTUAL) {
+        estado.catalogo = fusionarCatalogoMaestroConLocal(parsed);
+        localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+        localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
+      } else {
+        estado.catalogo = parsed;
+      }
       // Limpiar nota obsoleta "Cajas x 6" si estaba guardada en caché local
       estado.catalogo.forEach(p => {
         (p.productos || []).forEach(pr => {
@@ -209,11 +247,14 @@ function cargarDatosIniciales() {
       });
       localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
     } catch (e) {
-      estado.catalogo = [...CATALOGO_MAESTRO];
+      estado.catalogo = JSON.parse(JSON.stringify(CATALOGO_MAESTRO));
+      localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+      localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
     }
   } else {
-    estado.catalogo = [...CATALOGO_MAESTRO];
+    estado.catalogo = JSON.parse(JSON.stringify(CATALOGO_MAESTRO));
     localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+    localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
   }
 
   const pedidosGuardados = localStorage.getItem("agri_pedidos_v4");
@@ -270,12 +311,160 @@ function obtenerNombreDiaSemana(fechaIso) {
   return dias[d.getDay()];
 }
 
+function obtenerRecargoFestivoProducto(pr, prov = null) {
+  if (!pr) return 0;
+  if (Number(pr.recargoFestivo) > 0) return Number(pr.recargoFestivo);
+  const notas = normalizarTextoBasico(pr.notas || "");
+  if (notas && (notas.includes("festiv") || notas.includes("domingo")) && notas.includes("500")) {
+    return 500;
+  }
+  if (prov) {
+    const razonNorm = normalizarTextoBasico(prov.razonSocialFactura || "");
+    const prodNorm = normalizarTextoBasico(pr.producto || "");
+    const esAngelicaGabriel = prov.id === "agr-gabriel-castaneda" || razonNorm.includes("nino nino angelica maria");
+    if (esAngelicaGabriel && (prodNorm === "espinaca baby" || prodNorm === "rugula")) {
+      return 500;
+    }
+  }
+  return 0;
+}
+
+function esFechaActualDomingo(fechaIso = estado.fecha) {
+  return obtenerNombreDiaSemana(fechaIso || estado.fecha) === "Domingo";
+}
+
+function cargarEstadoFestivoDeFecha(fechaIso) {
+  try {
+    const raw = localStorage.getItem("agri_fechas_festivas_v1");
+    if (!raw) return false;
+    const mapa = JSON.parse(raw);
+    return Boolean(mapa && mapa[fechaIso]);
+  } catch (e) {
+    return false;
+  }
+}
+
+function guardarEstadoFestivoDeFecha(fechaIso, valor) {
+  try {
+    const raw = localStorage.getItem("agri_fechas_festivas_v1");
+    const mapa = raw ? JSON.parse(raw) : {};
+    if (valor) mapa[fechaIso] = true;
+    else delete mapa[fechaIso];
+    localStorage.setItem("agri_fechas_festivas_v1", JSON.stringify(mapa));
+  } catch (e) {}
+}
+
+function aplicaTarifaDomingoOFestivo() {
+  return esFechaActualDomingo() || Boolean(estado.esFestivo);
+}
+
+function calcularPrecioVigenteProducto(pr, prov = null) {
+  const base = Number(pr && pr.precio) || 0;
+  if (base <= 0) return 0;
+  const recargo = obtenerRecargoFestivoProducto(pr, prov);
+  return (recargo > 0 && aplicaTarifaDomingoOFestivo()) ? (base + recargo) : base;
+}
+
+function actualizarUICheckFestivo() {
+  const chk = document.getElementById("chkDiaFestivoHeader");
+  const cont = document.getElementById("lblContainerFestivoHeader");
+  const lbl = document.getElementById("lblTextoFestivoHeader");
+  const esDom = esFechaActualDomingo();
+  const activo = esDom || Boolean(estado.esFestivo);
+
+  if (chk) {
+    chk.checked = activo;
+    chk.disabled = esDom;
+  }
+  if (lbl) {
+    if (esDom) {
+      lbl.innerText = "🌞 Domingo (+$500 activo)";
+    } else if (estado.esFestivo) {
+      lbl.innerText = "🎉 Es Festivo (+$500 activo)";
+    } else {
+      lbl.innerText = "🎉 Es Festivo";
+    }
+  }
+  if (cont) {
+    cont.className = activo
+      ? "flex items-center gap-1.5 font-extrabold text-amber-950 bg-amber-200/90 hover:bg-amber-200 border border-amber-400 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition cursor-pointer shadow-xs select-none"
+      : "flex items-center gap-1.5 font-extrabold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition cursor-pointer shadow-2xs select-none";
+  }
+}
+
+function recalcularFilasConRecargoFestivo(reRender = true) {
+  if (!Array.isArray(estado.filasProductos) || estado.filasProductos.length === 0) return;
+  let huboCambio = false;
+  const aplica = aplicaTarifaDomingoOFestivo();
+
+  estado.filasProductos.forEach(fila => {
+    const recargo = Number(fila.recargoFestivo) || 0;
+    const base = Number(fila.precioBaseCatalogo) || 0;
+    if (recargo > 0 && base > 0) {
+      const actual = Number(fila.precioUnitario) || 0;
+      const esPrecioAutomatico = (actual === base) || (actual === base + recargo);
+      if (esPrecioAutomatico) {
+        const nuevoPrecio = aplica ? (base + recargo) : base;
+        if (actual !== nuevoPrecio) {
+          fila.precioUnitario = nuevoPrecio;
+          fila.precioOriginalCatalogo = nuevoPrecio;
+          huboCambio = true;
+        }
+      }
+    }
+  });
+
+  if (reRender && (huboCambio || estado.filasProductos.some(f => Number(f.recargoFestivo) > 0))) {
+    renderizarFilasProductos();
+  }
+}
+
+window.toggleDiaFestivo = function(checked) {
+  if (esFechaActualDomingo()) {
+    actualizarUICheckFestivo();
+    return;
+  }
+  estado.esFestivo = Boolean(checked);
+  guardarEstadoFestivoDeFecha(estado.fecha, estado.esFestivo);
+  actualizarUICheckFestivo();
+  recalcularFilasConRecargoFestivo(true);
+
+  const panelProd = document.getElementById("panelProveedoresPorProducto");
+  const tituloProd = document.getElementById("lblProductoFiltradoTitulo");
+  if (panelProd && !panelProd.classList.contains("hidden") && tituloProd && tituloProd.innerText) {
+    filtrarPorProducto(tituloProd.innerText);
+  }
+
+  mostrarToast(
+    estado.esFestivo
+      ? "🎉 Día Festivo activado: se suma +$500 en productos con recargo festivo."
+      : "📅 Día Festivo desactivado: se aplican tarifas regulares."
+  );
+};
+
+window.toggleRecargoFestivoEnFila = function(index, checked) {
+  if (esFechaActualDomingo()) {
+    actualizarUICheckFestivo();
+    return;
+  }
+  toggleDiaFestivo(checked);
+};
+
 function actualizarIndicadorDiaSemana() {
   const dia = obtenerNombreDiaSemana(estado.fecha);
   const badgeDia = document.getElementById("badgeDiaSemana");
   const hoyIso = new Date().toISOString().split('T')[0];
   if (badgeDia) {
     badgeDia.innerText = (estado.fecha === hoyIso) ? `📅 Hoy (${dia})` : `📅 ${dia}`;
+  }
+  estado.esFestivo = cargarEstadoFestivoDeFecha(estado.fecha);
+  actualizarUICheckFestivo();
+  recalcularFilasConRecargoFestivo(true);
+
+  const panelProd = document.getElementById("panelProveedoresPorProducto");
+  const tituloProd = document.getElementById("lblProductoFiltradoTitulo");
+  if (panelProd && !panelProd.classList.contains("hidden") && tituloProd && tituloProd.innerText) {
+    filtrarPorProducto(tituloProd.innerText);
   }
 }
 
@@ -347,7 +536,9 @@ function configurarEventos() {
     if (coincidencias.length > 0) {
       listaSugerencias.innerHTML = coincidencias.map(p => {
         const entregaHoy = p.diasEntrega.includes(diaActual);
-        const asignadoAMi = (estado.perfilActivo === "admin") || (p.encargadoLogistica && p.encargadoLogistica.includes(PERFILES[estado.perfilActivo].encargadoKey));
+        const asignadoAMi = (estado.perfilActivo === "admin") ||
+          (p.productos || []).some(pr => productoPerteneceAPerfil(pr, p, estado.perfilActivo)) ||
+          productoPerteneceAPerfil(null, p, estado.perfilActivo);
 
         // Filtrar productos del proveedor según el perfil activo (o mostrar todos si es admin)
         const prodsProv = obtenerProductosDeProveedorSegunPerfil(p);
@@ -359,13 +550,15 @@ function configurarEventos() {
         const botonesProductos = prodsProv.map(pr => {
           const pEsc = pr.producto.replace(/'/g, "\\'");
           const coincideTexto = texto && pr.producto.toLowerCase().includes(texto);
+          const precioMostrar = calcularPrecioVigenteProducto(pr, p);
+          const tieneRecargoActivo = obtenerRecargoFestivoProducto(pr, p) > 0 && aplicaTarifaDomingoOFestivo();
           return `
             <button 
               type="button" 
               onclick="event.stopPropagation(); seleccionarProveedor('${p.id}', '${pEsc}')" 
               class="text-[11px] ${coincideTexto ? 'bg-emerald-600 text-white ring-2 ring-emerald-300' : 'bg-emerald-50 hover:bg-emerald-600 text-emerald-900 hover:text-white border border-emerald-300'} px-2.5 py-1 rounded-xl font-black transition flex items-center gap-1 shadow-2xs"
             >
-              <span>🛒</span> ${pr.producto} ${pr.precio > 0 ? `($ ${fmtMiles(pr.precio)})` : ''}
+              <span>🛒</span> ${pr.producto} ${precioMostrar > 0 ? `($ ${fmtMiles(precioMostrar)}${tieneRecargoActivo ? ' 🎉' : ''})` : ''}
             </button>
           `;
         }).join("");
@@ -375,7 +568,7 @@ function configurarEventos() {
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-bold text-slate-900 text-sm">${p.nombreComun}</span>
-                ${asignadoAMi ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Tu Agricultor</span>` : ''}
+                ${asignadoAMi ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Tu Aliado</span>` : ''}
                 ${entregaHoy ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Entrega Hoy</span>` : `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">Días: ${p.diasEntrega.join(", ")}</span>`}
               </div>
               <p class="text-xs text-slate-600 font-medium">Factura a: <strong class="text-slate-800">${p.razonSocialFactura}</strong></p>
@@ -408,21 +601,24 @@ function configurarEventos() {
 // ==========================================
 // 🔍 FILTRO POR PRODUCTO: SEGMENTACIÓN ESTRICTA POR COMPRADOR
 // ==========================================
+function productoPerteneceAPerfil(pr, prov, perfilId) {
+  if (!perfilId || perfilId === "admin") return true;
+  const neg = ((pr && pr.negociador) || (prov && prov.encargadoLogistica) || "").toUpperCase();
+  const esCamilo = neg.includes("CAMILO") || neg.includes("FERRUCAS") || neg.includes("FINCA");
+  const esClaudia = neg.includes("CLAUDIA");
+  if (perfilId === "camilo") return esCamilo;
+  if (perfilId === "claudia") return esClaudia;
+  return true;
+}
+
 function obtenerProductosDelPerfil(perfilId) {
   const prods = new Set();
   const catalogo = (estado.catalogo && estado.catalogo.length > 0) ? estado.catalogo : CATALOGO_MAESTRO;
 
   catalogo.forEach(prov => {
-    const logistica = (prov.encargadoLogistica || "").toUpperCase();
-    const esCamilo = logistica.includes("CAMILO") || logistica.includes("FERRUCAS");
-    const esClaudia = logistica.includes("CLAUDIA");
-
-    if (perfilId === "camilo" && !esCamilo) return;
-    if (perfilId === "claudia" && !esClaudia) return;
-
     if (prov.productos && Array.isArray(prov.productos)) {
       prov.productos.forEach(pr => {
-        if (pr.producto && pr.producto.trim()) {
+        if (pr.producto && pr.producto.trim() && productoPerteneceAPerfil(pr, prov, perfilId)) {
           prods.add(pr.producto.trim());
         }
       });
@@ -464,23 +660,27 @@ window.filtrarPorProducto = function(nombreProd) {
 
   // Buscar solo proveedores asignados al perfil activo (o todos si es admin)
   const proveedoresDisponibles = [];
+  const targetNorm = normalizarTextoBasico(nombreProd);
+  const hayCoincidenciaExactaGlobal = estado.catalogo.some(prov =>
+    (prov.productos || []).some(pr =>
+      productoPerteneceAPerfil(pr, prov, estado.perfilActivo) &&
+      normalizarTextoBasico(pr.producto) === targetNorm
+    )
+  );
 
   estado.catalogo.forEach(prov => {
-    const logistica = (prov.encargadoLogistica || "").toUpperCase();
-    const esCamilo = logistica.includes("CAMILO") || logistica.includes("FERRUCAS");
-    const esClaudia = logistica.includes("CLAUDIA");
-
-    if (estado.perfilActivo === "camilo" && !esCamilo) return;
-    if (estado.perfilActivo === "claudia" && !esClaudia) return;
-
-    const prodsCoincidentes = prov.productos.filter(pr => 
-      pr.producto.toLowerCase().includes(nombreProd.toLowerCase()) || 
-      nombreProd.toLowerCase().includes(pr.producto.toLowerCase())
-    );
+    const prodsCoincidentes = (prov.productos || []).filter(pr => {
+      if (!productoPerteneceAPerfil(pr, prov, estado.perfilActivo)) return false;
+      const pNorm = normalizarTextoBasico(pr.producto);
+      if (hayCoincidenciaExactaGlobal) return pNorm === targetNorm;
+      return pNorm.includes(targetNorm) || targetNorm.includes(pNorm);
+    });
 
     if (prodsCoincidentes.length > 0) {
       const entregaHoy = prov.diasEntrega.includes(diaActual);
       prodsCoincidentes.forEach(pr => {
+        const recargoFest = obtenerRecargoFestivoProducto(pr, prov);
+        const precioFinal = calcularPrecioVigenteProducto(pr, prov);
         proveedoresDisponibles.push({
           proveedorId: prov.id,
           nombreComun: prov.nombreComun,
@@ -494,7 +694,9 @@ window.filtrarPorProducto = function(nombreProd) {
           diasEntrega: prov.diasEntrega,
           entregaHoy: entregaHoy,
           productoNombre: pr.producto,
-          precio: pr.precio,
+          precio: precioFinal,
+          precioBase: pr.precio,
+          recargoFestivo: recargoFest,
           unidadMedida: pr.unidadMedida,
           vigente: pr.vigente,
           condicion: pr.condicion,
@@ -514,7 +716,7 @@ window.filtrarPorProducto = function(nombreProd) {
   if (proveedoresDisponibles.length === 0) {
     contenedor.innerHTML = `
       <div class="col-span-full text-center py-6 text-slate-400 bg-slate-50 rounded-xl">
-        <p class="text-xs font-bold text-slate-600">No hay agricultores de ${PERFILES[estado.perfilActivo].nombre} registrados con "${nombreProd}".</p>
+        <p class="text-xs font-bold text-slate-600">No hay Aliadoes de ${PERFILES[estado.perfilActivo].nombre} registrados con "${nombreProd}".</p>
       </div>
     `;
   } else {
@@ -534,9 +736,12 @@ window.filtrarPorProducto = function(nombreProd) {
           </div>
           
           <div class="text-right">
-            <p class="text-sm font-black text-emerald-700">
+            <p class="text-sm font-black ${item.recargoFestivo > 0 && aplicaTarifaDomingoOFestivo() ? 'text-amber-700' : 'text-emerald-700'}">
               ${item.precio > 0 ? `$ ${item.precio.toLocaleString('es-CO')}` : 'Por definir'}
             </p>
+            ${item.recargoFestivo > 0 && aplicaTarifaDomingoOFestivo() ? `
+              <p class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded inline-block">Incluye +$${fmtMiles(item.recargoFestivo)} Dom/Festivo</p>
+            ` : ''}
             <p class="text-[10px] text-slate-400">por ${item.unidadMedida}</p>
           </div>
         </div>
@@ -549,7 +754,7 @@ window.filtrarPorProducto = function(nombreProd) {
           </div>
 
           <button type="button" onclick="seleccionarProveedorParaProducto('${item.proveedorId}', '${item.productoNombre}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-2xs flex items-center gap-1">
-            <span>🛒</span> Pedir a este Agricultor
+            <span>🛒</span> Pedir a este Aliado
           </button>
         </div>
 
@@ -632,7 +837,7 @@ function renderizarSemaforoCobertura() {
       `;
     } else {
       return `
-        <span onclick="filtrarPorProducto('${nombreProd}')" class="inline-flex items-center gap-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full cursor-pointer hover:bg-rose-100 transition active:scale-95" title="Clic para buscar agricultores de ${nombreProd}">
+        <span onclick="filtrarPorProducto('${nombreProd}')" class="inline-flex items-center gap-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full cursor-pointer hover:bg-rose-100 transition active:scale-95" title="Clic para buscar Aliadoes de ${nombreProd}">
           <span>⭕</span> ${nombreProd}
         </span>
       `;
@@ -650,32 +855,32 @@ function renderizarSemaforoCobertura() {
 // ==========================================
 function renderizarListaProveedoresSugeridos() {
   const diaActual = obtenerNombreDiaSemana(estado.fecha);
-  const contenedor = document.getElementById("listaRapidaAgricultoresHoy");
+  const contenedor = document.getElementById("listaRapidaAliadoesHoy");
   const lblDia = document.getElementById("lblDiaProgramacion");
   if (lblDia) lblDia.innerText = diaActual;
   if (!contenedor) return;
 
   if (!estado.perfilActivo || !PERFILES[estado.perfilActivo]) {
-    contenedor.innerHTML = `<span class="text-xs text-slate-400 py-1 italic">Pulsa en "Elegir Perfil" arriba para ver tus agricultores programados.</span>`;
+    contenedor.innerHTML = `<span class="text-xs text-slate-400 py-1 italic">Pulsa en "Elegir Perfil" arriba para ver tus Aliadoes programados.</span>`;
     return;
   }
 
   const perfil = PERFILES[estado.perfilActivo];
 
-  let agricultoresFiltrados = estado.catalogo.filter(p => p.diasEntrega.includes(diaActual));
+  let AliadoesFiltrados = estado.catalogo.filter(p => p.diasEntrega.includes(diaActual));
 
   if (estado.perfilActivo === "camilo") {
-    agricultoresFiltrados = agricultoresFiltrados.filter(p => p.encargadoLogistica === "CAMILO ROMERO" || p.encargadoLogistica === "FINCA FERRUCAS");
+    AliadoesFiltrados = AliadoesFiltrados.filter(p => p.encargadoLogistica === "CAMILO ROMERO" || p.encargadoLogistica === "FINCA FERRUCAS");
   } else if (estado.perfilActivo === "claudia") {
-    agricultoresFiltrados = agricultoresFiltrados.filter(p => p.encargadoLogistica === "CLAUDIA MARQUEZ");
+    AliadoesFiltrados = AliadoesFiltrados.filter(p => p.encargadoLogistica === "CLAUDIA MARQUEZ");
   }
 
-  if (agricultoresFiltrados.length === 0) {
-    contenedor.innerHTML = `<span class="text-xs text-slate-500 py-1">No hay agricultores asignados para ${perfil.nombre} el día ${diaActual}. Usa el buscador o el filtro por producto.</span>`;
+  if (AliadoesFiltrados.length === 0) {
+    contenedor.innerHTML = `<span class="text-xs text-slate-500 py-1">No hay Aliadoes asignados para ${perfil.nombre} el día ${diaActual}. Usa el buscador o el filtro por producto.</span>`;
     return;
   }
 
-  contenedor.innerHTML = agricultoresFiltrados.map(p => `
+  contenedor.innerHTML = AliadoesFiltrados.map(p => `
     <button type="button" onclick="seleccionarProveedor('${p.id}')" class="text-xs bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-950 border border-slate-200 hover:border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs">
       <span class="text-emerald-700">⏰ ${p.horaPlanta}</span>
       <span>${p.nombreComun}</span>
@@ -691,16 +896,7 @@ function obtenerProductosDeProveedorSegunPerfil(prov) {
   const todos = (prov && Array.isArray(prov.productos)) ? prov.productos : [];
   if (estado.perfilActivo === "admin") return todos;
 
-  const filtrados = todos.filter(pr => {
-    const neg = (pr.negociador || prov.encargadoLogistica || "").toUpperCase();
-    if (estado.perfilActivo === "camilo") {
-      return neg.includes("CAMILO") || neg.includes("FERRUCAS");
-    }
-    if (estado.perfilActivo === "claudia") {
-      return neg.includes("CLAUDIA");
-    }
-    return true;
-  });
+  const filtrados = todos.filter(pr => productoPerteneceAPerfil(pr, prov, estado.perfilActivo));
 
   return filtrados.length > 0 ? filtrados : todos;
 }
@@ -743,7 +939,7 @@ window.seleccionarProveedor = function(id, nombreProdEspecifico = null) {
   // Filtrar productos del catálogo de este proveedor según el perfil activo
   const prodsDelPerfil = obtenerProductosDeProveedorSegunPerfil(prov);
 
-  // Determinar cuál es el único producto que el usuario seleccionó (sin mezclar otros productos del mismo agricultor)
+  // Determinar cuál es el único producto que el usuario seleccionó (sin mezclar otros productos del mismo Aliado)
   let prodElegidoTexto = (nombreProdEspecifico || "").trim().toLowerCase();
   if (!prodElegidoTexto) {
     const selFiltro = document.getElementById("selectFiltroProducto");
@@ -754,11 +950,16 @@ window.seleccionarProveedor = function(id, nombreProdEspecifico = null) {
 
   let productosSeleccionadosCatalogo = [];
   if (prodElegidoTexto) {
+    const elegNorm = normalizarTextoBasico(prodElegidoTexto);
     productosSeleccionadosCatalogo = prodsDelPerfil.filter(
-      pr => pr.producto.toLowerCase() === prodElegidoTexto ||
-            pr.producto.toLowerCase().includes(prodElegidoTexto) ||
-            prodElegidoTexto.includes(pr.producto.toLowerCase())
+      pr => normalizarTextoBasico(pr.producto) === elegNorm
     );
+    if (productosSeleccionadosCatalogo.length === 0) {
+      productosSeleccionadosCatalogo = prodsDelPerfil.filter(
+        pr => normalizarTextoBasico(pr.producto).includes(elegNorm) ||
+              elegNorm.includes(normalizarTextoBasico(pr.producto))
+      );
+    }
   }
 
   // Si no se especificó producto o no hubo coincidencia exacta, cargar únicamente el primer producto del perfil para no mezclar varios productos
@@ -787,15 +988,20 @@ window.seleccionarProveedor = function(id, nombreProdEspecifico = null) {
       inputHoraPlanta.value = pedidoExistenteHoy.proveedor.horaPlanta;
     }
 
-    // Cargar ÚNICAMENTE las filas del producto seleccionado (sin agregar los demás productos del agricultor)
+    // Cargar ÚNICAMENTE las filas del producto seleccionado (sin agregar los demás productos del Aliado)
     estado.filasProductos = itemsExistentesDeEsteProducto.map((it, idx) => {
       const esBrocoli = (it.producto || "").toLowerCase().includes("brócoli") || (it.producto || "").toLowerCase().includes("brocoli");
       const modBrocoli = it.modalidadBrocoli || (esBrocoli ? "por cajas" : "");
+      const prodCat = (prov.productos || []).find(p => normalizarTextoBasico(p.producto) === normalizarTextoBasico(it.producto));
+      const recargo = prodCat ? obtenerRecargoFestivoProducto(prodCat, prov) : 0;
+      const baseCat = prodCat ? prodCat.precio : it.precioUnitario;
       return {
         id: "fila-edit-" + idx + "-" + Math.random().toString(36).substr(2, 4),
         producto: it.producto,
         precioUnitario: it.precioUnitario,
+        precioBaseCatalogo: baseCat,
         precioOriginalCatalogo: it.precioUnitario,
+        recargoFestivo: recargo,
         unidad: it.unidad,
         vigente: it.vigente !== false,
         condicion: it.condicion || "",
@@ -814,11 +1020,15 @@ window.seleccionarProveedor = function(id, nombreProdEspecifico = null) {
     // Cargar ÚNICAMENTE el producto seleccionado (ej. solo Brócoli o solo Coliflor)
     estado.filasProductos = productosSeleccionadosCatalogo.map((prod, idx) => {
       const esBrocoli = (prod.producto || "").toLowerCase().includes("brócoli") || (prod.producto || "").toLowerCase().includes("brocoli");
+      const recargo = obtenerRecargoFestivoProducto(prod, prov);
+      const precioVigente = calcularPrecioVigenteProducto(prod, prov);
       return {
         id: "fila-" + idx + "-" + Math.random().toString(36).substr(2, 4),
         producto: prod.producto,
-        precioUnitario: prod.precio,
-        precioOriginalCatalogo: prod.precio,
+        precioUnitario: precioVigente,
+        precioBaseCatalogo: prod.precio,
+        precioOriginalCatalogo: precioVigente,
+        recargoFestivo: recargo,
         unidad: prod.unidadMedida,
         vigente: prod.vigente,
         condicion: prod.condicion,
@@ -837,7 +1047,7 @@ window.seleccionarProveedor = function(id, nombreProdEspecifico = null) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
-// Función para cambiar o agregar voluntariamente otro producto pactado del mismo agricultor
+// Función para cambiar o agregar voluntariamente otro producto pactado del mismo Aliado
 window.seleccionarOtroProductoDelMismoProveedor = function(nombreProducto, modo = "cambiar") {
   const prov = estado.proveedorSeleccionado;
   if (!prov) return;
@@ -851,11 +1061,15 @@ window.seleccionarOtroProductoDelMismoProveedor = function(nombreProducto, modo 
   if (!prodCat) return;
 
   const esBrocoli = (prodCat.producto || "").toLowerCase().includes("brócoli") || (prodCat.producto || "").toLowerCase().includes("brocoli");
+  const recargo = obtenerRecargoFestivoProducto(prodCat, prov);
+  const precioVigente = calcularPrecioVigenteProducto(prodCat, prov);
   estado.filasProductos.push({
     id: "fila-extra-" + Math.random().toString(36).substr(2, 6),
     producto: prodCat.producto,
-    precioUnitario: prodCat.precio,
-    precioOriginalCatalogo: prodCat.precio,
+    precioUnitario: precioVigente,
+    precioBaseCatalogo: prodCat.precio,
+    precioOriginalCatalogo: precioVigente,
+    recargoFestivo: recargo,
     unidad: prodCat.unidadMedida,
     vigente: prodCat.vigente,
     condicion: prodCat.condicion,
@@ -932,11 +1146,16 @@ window.editarRegistroPedido = function(idPedido) {
   const filasCargadas = ped.items.map((it, idx) => {
     const esBrocoli = (it.producto || "").toLowerCase().includes("brócoli") || (it.producto || "").toLowerCase().includes("brocoli");
     const modBrocoli = it.modalidadBrocoli || (esBrocoli ? "por cajas" : "");
+    const prodCat = (prov.productos || []).find(p => normalizarTextoBasico(p.producto) === normalizarTextoBasico(it.producto));
+    const recargo = prodCat ? obtenerRecargoFestivoProducto(prodCat, prov) : 0;
+    const baseCat = prodCat ? prodCat.precio : it.precioUnitario;
     return {
       id: "fila-edit-" + idx + "-" + Math.random().toString(36).substr(2, 4),
       producto: it.producto,
       precioUnitario: it.precioUnitario,
+      precioBaseCatalogo: baseCat,
       precioOriginalCatalogo: it.precioUnitario,
+      recargoFestivo: recargo,
       unidad: it.unidad,
       vigente: it.vigente !== false,
       condicion: it.condicion || "",
@@ -988,7 +1207,9 @@ window.repartirProductoEnOtroCliente = function(index) {
     id: "fila-split-" + Math.random().toString(36).substr(2, 6),
     producto: filaBase.producto,
     precioUnitario: filaBase.precioUnitario,
+    precioBaseCatalogo: filaBase.precioBaseCatalogo,
     precioOriginalCatalogo: filaBase.precioOriginalCatalogo,
+    recargoFestivo: filaBase.recargoFestivo || 0,
     unidad: filaBase.unidad,
     vigente: filaBase.vigente,
     condicion: filaBase.condicion,
@@ -1227,6 +1448,31 @@ function renderizarFilasProductos() {
           </div>
         ` : ''}
 
+        ${fila.recargoFestivo > 0 ? `
+          <div class="border-2 ${aplicaTarifaDomingoOFestivo() ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-700'} rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <label class="flex items-center gap-2 cursor-pointer font-extrabold select-none">
+              <input
+                type="checkbox"
+                ${aplicaTarifaDomingoOFestivo() ? 'checked' : ''}
+                ${esFechaActualDomingo() ? 'disabled' : ''}
+                onchange="toggleRecargoFestivoEnFila(${idx}, this.checked)"
+                class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+              >
+              <span>
+                ${esFechaActualDomingo()
+                  ? `🌞 Domingo (+$ ${fmtMiles(fila.recargoFestivo)} aplicado automáticamente)`
+                  : `🎉 Es Festivo (+$ ${fmtMiles(fila.recargoFestivo)} adicionales)`}
+              </span>
+            </label>
+            <span class="text-[11px] font-bold tabular-nums">
+              Base: $ ${fmtMiles(fila.precioBaseCatalogo || fila.precioUnitario)} →
+              <strong class="${aplicaTarifaDomingoOFestivo() ? 'text-amber-900' : 'text-slate-600'}">
+                $ ${fmtMiles((fila.precioBaseCatalogo || 0) + (aplicaTarifaDomingoOFestivo() ? fila.recargoFestivo : 0))}
+              </strong>
+            </span>
+          </div>
+        ` : ''}
+
         <!-- 🥦 ITEM 5: OPCIONES ESPECIALES DEL BRÓCOLI (1° POR CAJAS SIN PAGO POSTERIOR / 2° POR CORTE CON AVISO DE PAGO POSTERIOR O PAGO INMEDIATO) -->
         ${esBrocoli ? `
           <div class="bg-emerald-50/90 border-2 border-emerald-300 rounded-2xl p-2.5 space-y-2">
@@ -1366,11 +1612,11 @@ function renderizarFilasProductos() {
 }
 
 // ==========================================
-// GUARDAR PEDIDO DE UN AGRICULTOR
+// GUARDAR PEDIDO DE UN Aliado
 // ==========================================
 window.guardarPedidoCompletoProveedor = function() {
   if (!estado.proveedorSeleccionado) {
-    alert("Por favor selecciona primero un agricultor.");
+    alert("Por favor selecciona primero un Aliado.");
     return;
   }
 
@@ -1536,7 +1782,7 @@ window.finalizarYEnviarEntrega = function() {
   }
 
   const perfil = PERFILES[estado.perfilActivo];
-  const confirmacion = confirm(`¿Confirmas radicar tu entrega de hoy, ${perfil.nombre}?\n\nTienes ${pedidosUsuarioHoy.length} agricultores programados.`);
+  const confirmacion = confirm(`¿Confirmas radicar tu entrega de hoy, ${perfil.nombre}?\n\nTienes ${pedidosUsuarioHoy.length} Aliadoes programados.`);
   if (!confirmacion) return;
 
   let totalItems = 0;
@@ -1565,7 +1811,7 @@ window.finalizarYEnviarEntrega = function() {
     usuarioNombre: perfil.nombre,
     horaEnvio: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
     timestamp: new Date().toISOString(),
-    totalAgricultores: pedidosUsuarioHoy.length,
+    totalAliadoes: pedidosUsuarioHoy.length,
     totalItems: totalItems,
     totalCajas: totalCajas,
     totalValor: totalValor,
@@ -1633,7 +1879,7 @@ function renderizarBuzonEntregas() {
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg">
-            ${ent.totalAgricultores} agricultores | ${ent.totalItems} productos
+            ${ent.totalAliadoes} Aliadoes | ${ent.totalItems} productos
           </span>
           <button type="button" onclick="descargarExcelEntregaIndividual('${ent.id}')" class="text-xs bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded-lg transition">
             📥 Descargar Excel
@@ -1663,7 +1909,7 @@ window.descargarExcelEntregaIndividual = function(idEntrega) {
         "Hora Planta": ped.proveedor.horaPlanta,
         "Hora Campo": ped.proveedor.horaCampo || "-",
         "Transporte": ped.proveedor.responsableTransporte,
-        "Agricultor (Campo)": ped.proveedor.nombreComun,
+        "Aliado (Campo)": ped.proveedor.nombreComun,
         "Facturar a": ped.proveedor.razonSocialFactura,
         "Producto": it.producto,
         "Cantidad": it.cantidad,
@@ -1780,7 +2026,7 @@ function renderizarPedidosDelDia() {
       <div class="text-center py-12 text-slate-400 surface-card rounded-3xl p-6 sm:p-8">
         <div class="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">📦</div>
         <p class="text-sm sm:text-base font-extrabold text-slate-800">No hay pedidos programados para hoy (${PERFILES[estado.perfilActivo].nombre})</p>
-        <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">Selecciona un agricultor en el buscador o haz clic en un producto del semáforo superior para comenzar.</p>
+        <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">Selecciona un Aliado en el buscador o haz clic en un producto del semáforo superior para comenzar.</p>
       </div>
     `;
     return;
@@ -1933,7 +2179,7 @@ window.abrirModalConfirmarLimpiar = function() {
   const perfil = PERFILES[estado.perfilActivo];
   if (lblUsuario) lblUsuario.innerText = perfil.nombre;
   if (lblTexto) {
-    lblTexto.innerHTML = `Se eliminarán los <strong>${pedidosFecha.length} agricultores</strong> guardados en tu borrador de hoy (${formatearFecha(estado.fecha)}).`;
+    lblTexto.innerHTML = `Se eliminarán los <strong>${pedidosFecha.length} Aliadoes</strong> guardados en tu borrador de hoy (${formatearFecha(estado.fecha)}).`;
   }
 
   document.getElementById("modalConfirmarLimpiar").classList.remove("hidden");
@@ -1996,7 +2242,7 @@ function exportarExcelPlanta() {
         "Hora en Planta": ped.proveedor.horaPlanta || "11:00",
         "Hora en Campo": ped.proveedor.horaCampo || "-",
         "Responsable Transporte": ped.proveedor.responsableTransporte || "TERCERO",
-        "Agricultor (Campo)": ped.proveedor.nombreComun,
+        "Aliado (Campo)": ped.proveedor.nombreComun,
         "Teléfono Contacto": ped.proveedor.contacto || "",
         "Ubicación / Finca": ped.proveedor.ubicacion || "",
         "Producto": it.producto,
@@ -2033,7 +2279,7 @@ function exportarExcelAdministracion() {
       filas.push({
         "Fecha": ped.fecha,
         "Comprador / Negociador": ped.usuarioNombre,
-        "Agricultor (Campo)": ped.proveedor.nombreComun,
+        "Aliado (Campo)": ped.proveedor.nombreComun,
         "Facturar a Nombre de (Razón Social)": ped.proveedor.razonSocialFactura,
         "Producto": it.producto,
         "Cantidad": it.cantidad,
@@ -2051,7 +2297,7 @@ function exportarExcelAdministracion() {
   filas.push({
     "Fecha": "TOTAL COMPRAS",
     "Comprador / Negociador": "",
-    "Agricultor (Campo)": "",
+    "Aliado (Campo)": "",
     "Facturar a Nombre de (Razón Social)": "",
     "Producto": "",
     "Cantidad": "",
@@ -2204,14 +2450,14 @@ function renderizarTorreControlGerencia() {
   
   let totalValor = 0;
   let totalCajas = 0;
-  const agricultoresSet = new Set();
+  const AliadoesSet = new Set();
   let d1Total = 0;
   let araTotal = 0;
   let camiloTotal = 0;
   let claudiaTotal = 0;
 
   pedidosFecha.forEach(p => {
-    agricultoresSet.add(p.proveedor.nombreComun);
+    AliadoesSet.add(p.proveedor.nombreComun);
     p.items.forEach(it => {
       const sub = it.subtotalEstimado || 0;
       totalValor += sub;
@@ -2230,7 +2476,7 @@ function renderizarTorreControlGerencia() {
   const elTotal = document.getElementById("kpiGerenciaTotalValor");
   const elVol = document.getElementById("kpiGerenciaVolumen");
   if (elTotal) elTotal.innerText = `$ ${totalValor.toLocaleString('es-CO')}`;
-  if (elVol) elVol.innerText = `${totalCajas.toLocaleString('es-CO')} Cajas • ${agricultoresSet.size} Agricultores`;
+  if (elVol) elVol.innerText = `${totalCajas.toLocaleString('es-CO')} Cajas • ${AliadoesSet.size} Aliadoes`;
 
   // KPI 2: Clientes D1 vs Ara
   const elD1 = document.getElementById("kpiGerenciaD1Total");
@@ -2406,14 +2652,14 @@ window.copiarResumenEjecutivoWhatsApp = function() {
   let totalItems = 0;
   const clientesMap = {};
   const compradoresMap = {
-    "camilo": { nombre: "Camilo Romero", total: 0, items: 0, agricultores: new Set() },
-    "claudia": { nombre: "Claudia Márquez", total: 0, items: 0, agricultores: new Set() }
+    "camilo": { nombre: "Camilo Romero", total: 0, items: 0, Aliadoes: new Set() },
+    "claudia": { nombre: "Claudia Márquez", total: 0, items: 0, Aliadoes: new Set() }
   };
 
   pedidosFecha.forEach(p => {
     const usr = p.usuarioId || "camilo";
     if (compradoresMap[usr]) {
-      compradoresMap[usr].agricultores.add(p.proveedor.nombreComun);
+      compradoresMap[usr].Aliadoes.add(p.proveedor.nombreComun);
     }
     p.items.forEach(it => {
       totalItems++;
@@ -2453,7 +2699,7 @@ window.copiarResumenEjecutivoWhatsApp = function() {
   texto += `💰 *INVERSIÓN TOTAL EN COMPRAS:*\n`;
   texto += `👉 *$ ${totalValor.toLocaleString('es-CO')} COP*\n`;
   texto += `📦 Volumen Total: *${totalCajas.toLocaleString('es-CO')} Cajas* (${totalItems} líneas de producto)\n`;
-  texto += `🚛 Agricultores en Ruta: *${pedidosFecha.length} agricultores*\n\n`;
+  texto += `🚛 Aliadoes en Ruta: *${pedidosFecha.length} Aliadoes*\n\n`;
 
   texto += `🎯 *DISTRIBUCIÓN POR CLIENTE:*\n`;
   Object.keys(clientesMap).forEach(c => {
@@ -2465,9 +2711,9 @@ window.copiarResumenEjecutivoWhatsApp = function() {
   texto += `\n👥 *GESTIÓN POR NEGOCIADOR:*\n`;
   Object.keys(compradoresMap).forEach(k => {
     const comp = compradoresMap[k];
-    if (comp.total > 0 || comp.agricultores.size > 0) {
+    if (comp.total > 0 || comp.Aliadoes.size > 0) {
       const radicado = estado.entregas.some(e => e.fecha === estado.fecha && e.usuarioId === k);
-      texto += `• *${comp.nombre}:* $ ${comp.total.toLocaleString('es-CO')} | ${comp.agricultores.size} agricultores [${radicado ? 'Radicado en Buzón ✅' : 'Borrador ⏳'}]\n`;
+      texto += `• *${comp.nombre}:* $ ${comp.total.toLocaleString('es-CO')} | ${comp.Aliadoes.size} Aliadoes [${radicado ? 'Radicado en Buzón ✅' : 'Borrador ⏳'}]\n`;
     }
   });
 
@@ -2513,7 +2759,7 @@ window.imprimirActaOficialGerencia = function() {
   const printAprobado = document.getElementById("printAprobado");
   const printTotalValor = document.getElementById("printTotalValor");
   const printTotalCajas = document.getElementById("printTotalCajas");
-  const printTotalAgricultores = document.getElementById("printTotalAgricultores");
+  const printTotalAliadoes = document.getElementById("printTotalAliadoes");
   const printTablaCuerpo = document.getElementById("printTablaCuerpo");
 
   let totalValor = 0;
@@ -2556,7 +2802,7 @@ window.imprimirActaOficialGerencia = function() {
   if (printAprobado) printAprobado.innerText = estadoAprob;
   if (printTotalValor) printTotalValor.innerText = `$ ${totalValor.toLocaleString('es-CO')}`;
   if (printTotalCajas) printTotalCajas.innerText = `${totalCajas.toLocaleString('es-CO')} Cajas`;
-  if (printTotalAgricultores) printTotalAgricultores.innerText = `${pedidosFecha.length} Proveedores`;
+  if (printTotalAliadoes) printTotalAliadoes.innerText = `${pedidosFecha.length} Proveedores`;
   if (printTablaCuerpo) printTablaCuerpo.innerHTML = filasHtml.join("");
 
   window.print();
@@ -2565,27 +2811,49 @@ window.imprimirActaOficialGerencia = function() {
 // ==========================================
 // ⚙️ GESTOR DE TARIFAS Y CONDICIONES MENSUALES
 // ==========================================
-window.abrirModalGestionPrecios = function() {
-  const modal = document.getElementById("modalGestionPrecios");
+function renderizarOpcionesSelectProveedoresPrecios() {
   const select = document.getElementById("selectProveedorEditarPrecios");
-  if (!modal || !select) return;
+  if (!select) return;
 
   select.innerHTML = estado.catalogo.map(p => `
     <option value="${p.id}">${p.nombreComun} (${p.razonSocialFactura})</option>
   `).join("");
 
-  if (!estado.proveedorIdParaEdicionPrecios && estado.catalogo.length > 0) {
+  const existeActual = estado.catalogo.some(p => p.id === estado.proveedorIdParaEdicionPrecios);
+  if ((!estado.proveedorIdParaEdicionPrecios || !existeActual) && estado.catalogo.length > 0) {
     estado.proveedorIdParaEdicionPrecios = estado.catalogo[0].id;
   }
-  select.value = estado.proveedorIdParaEdicionPrecios;
-  cargarProductosProveedorParaEdicion(estado.proveedorIdParaEdicionPrecios);
+  if (estado.proveedorIdParaEdicionPrecios) {
+    select.value = estado.proveedorIdParaEdicionPrecios;
+    cargarProductosProveedorParaEdicion(estado.proveedorIdParaEdicionPrecios);
+  }
+}
 
+window.abrirModalGestionPrecios = function() {
+  const modal = document.getElementById("modalGestionPrecios");
+  const select = document.getElementById("selectProveedorEditarPrecios");
+  if (!modal || !select) return;
+
+  const lblRes = document.getElementById("lblResultadoExcelGestion");
+  if (lblRes) lblRes.classList.add("hidden");
+
+  renderizarOpcionesSelectProveedoresPrecios();
   modal.classList.remove("hidden");
 };
 
 window.cerrarModalGestionPrecios = function() {
   const modal = document.getElementById("modalGestionPrecios");
   if (modal) modal.classList.add("hidden");
+};
+
+window.toggleBloquePegarExcelPrecios = function() {
+  const bloque = document.getElementById("bloquePegarExcelPrecios");
+  if (!bloque) return;
+  bloque.classList.toggle("hidden");
+  if (!bloque.classList.contains("hidden")) {
+    const txt = document.getElementById("txtPegarTablaExcelPrecios");
+    if (txt) txt.focus();
+  }
 };
 
 window.cargarProductosProveedorParaEdicion = function(provId) {
@@ -2595,7 +2863,7 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
   if (!contenedor || !prov) return;
 
   if (!prov.productos || prov.productos.length === 0) {
-    contenedor.innerHTML = `<p class="text-xs text-slate-500 py-4 italic text-center">Este agricultor no tiene productos registrados. Haz clic en 'Nuevo Producto' para agregar uno.</p>`;
+    contenedor.innerHTML = `<p class="text-xs text-slate-500 py-4 italic text-center">Este Aliado no tiene productos registrados. Haz clic en 'Nuevo Producto' para agregar uno.</p>`;
     return;
   }
 
@@ -2632,7 +2900,10 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
 
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
         <div>
-          <label class="block font-bold text-slate-700 mb-1">Precio Pactado ($)</label>
+          <label class="block font-bold text-slate-700 mb-1">
+            Precio Pactado ($)
+            ${obtenerRecargoFestivoProducto(pr, prov) > 0 ? `<span class="ml-1 text-[10px] font-black text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">+${fmtMiles(obtenerRecargoFestivoProducto(pr, prov))} dom/fest</span>` : ''}
+          </label>
           <input 
             type="text" 
             inputmode="numeric"
@@ -2691,11 +2962,15 @@ window.agregarNuevoProductoAProveedor = function() {
   if (!prov) return;
   if (!prov.productos) prov.productos = [];
 
+  const nombreNegociador = (estado.perfilActivo && PERFILES[estado.perfilActivo])
+    ? PERFILES[estado.perfilActivo].nombre
+    : "Gerencia";
+
   prov.productos.push({
     producto: "Nuevo Producto",
     precio: 0,
     unidadMedida: "Kg",
-    negociador: PERFILES[estado.perfilActivo].nombre,
+    negociador: nombreNegociador,
     vigente: true,
     condicion: "CREDITO 30 DIAS",
     notas: ""
@@ -2716,17 +2991,25 @@ window.eliminarProductoEnEdicion = function(index) {
 window.guardarCambiosPreciosProveedor = function() {
   const prov = estado.catalogo.find(p => p.id === estado.proveedorIdParaEdicionPrecios);
   if (prov && Array.isArray(prov.productos)) {
-    const prodEnCero = prov.productos.find(pr => (parseFloat(pr.precio) || 0) <= 0);
+    const prodEnCero = prov.productos.find(pr => {
+      const unidadLower = String(pr.unidadMedida || "").trim().toLowerCase();
+      const permiteCero = (unidadLower === "corte" || unidadLower === "unidades");
+      return !permiteCero && (parseFloat(pr.precio) || 0) <= 0;
+    });
     if (prodEnCero) {
-      alert(`⛔ El producto '${prodEnCero.producto}' tiene precio $0. Todos los productos deben tener un valor mayor a $0.`);
+      alert(`⛔ El producto '${prodEnCero.producto}' tiene precio $0. Todos los productos deben tener un valor mayor a $0 (excepto unidad 'corte' o 'Unidades').`);
       return;
     }
+    prov.ultimaActualizacionPrecio = new Date().toISOString();
   }
   localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+  localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
   cerrarModalGestionPrecios();
+  renderizarSelectFiltroProductos();
   renderizarSemaforoCobertura();
   renderizarListaProveedoresSugeridos();
   renderizarTorreControlGerencia();
+  if (typeof publicarEstadoEnNubeMultidispositivo === "function") publicarEstadoEnNubeMultidispositivo();
   mostrarToast("💾 ¡Tarifas mensuales y condiciones comerciales guardadas con éxito!");
 };
 
@@ -2734,10 +3017,13 @@ window.restablecerPreciosOriginales = function() {
   if (confirm("¿Deseas restaurar todas las tarifas y condiciones al catálogo base de fábrica? Se perderán las modificaciones personalizadas.")) {
     estado.catalogo = JSON.parse(JSON.stringify(CATALOGO_MAESTRO));
     localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
-    cargarProductosProveedorParaEdicion(estado.proveedorIdParaEdicionPrecios);
+    localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
+    renderizarOpcionesSelectProveedoresPrecios();
+    renderizarSelectFiltroProductos();
     renderizarSemaforoCobertura();
     renderizarListaProveedoresSugeridos();
     renderizarTorreControlGerencia();
+    if (typeof publicarEstadoEnNubeMultidispositivo === "function") publicarEstadoEnNubeMultidispositivo();
     mostrarToast("🔄 Catálogo de tarifas restaurado a los valores originales.");
   }
 };
@@ -2799,19 +3085,24 @@ window.abrirModalAlertaQuincenalMC = function(esManual = false) {
 
   if (subtitulo) {
     if (diaNum === 1 || diaNum === 16) {
-      subtitulo.innerText = `Hoy es día ${diaNum} del mes (Corte Quincenal Obligatorio). Sra. María Claudia, antes de proceder debes asegurarte de actualizar los precios o confirmar si continúas con los precios anteriores.`;
+      subtitulo.innerText = `Hoy es día ${diaNum} del mes (Corte Quincenal Obligatorio). Antes de proceder debes asegurarte de actualizar los precios o confirmar si continúas con los precios anteriores.`;
     } else if (esManual) {
-      subtitulo.innerText = `Control Quincenal de Precios (Días 1 y 16). Desde aquí puedes subir el Excel de actualización de precios o confirmar la continuidad de las tarifas actuales.`;
+      subtitulo.innerText = `Actualización de Precios desde Excel y Control Quincenal (Días 1 y 16). Sube aquí tu archivo .xlsx / .xls / .csv para actualizar tarifas y condiciones comerciales al instante.`;
     }
   }
   modal.classList.remove("hidden");
+};
+
+window.cerrarModalAlertaQuincenalMC = function() {
+  const modal = document.getElementById("modalAlertaQuincenalMC");
+  if (modal) modal.classList.add("hidden");
 };
 
 window.confirmarPreciosAnterioresMC = function() {
   const claveCorte = obtenerClaveCorteQuincenal(estado.fecha);
   const registroConfirmacion = {
     fecha: estado.fecha,
-    usuario: "María Claudia Márquez",
+    usuario: (estado.perfilActivo && PERFILES[estado.perfilActivo]) ? PERFILES[estado.perfilActivo].nombre : "María Claudia Márquez",
     accion: "CONTINUAR_SIN_ACTUALIZAR",
     alertaPreciosSinActualizar: true,
     timestamp: new Date().toISOString()
@@ -2822,7 +3113,7 @@ window.confirmarPreciosAnterioresMC = function() {
   if (typeof registrarEventoAuditoriaSeguridad === "function") {
     registrarEventoAuditoriaSeguridad(
       "CORTE_QUINCENAL_MC",
-      `Sra. María Claudia Márquez seleccionó 'Continuar sin actualizar precios' para la fecha (${estado.fecha}). Se activa alerta en pedidos.`
+      `${registroConfirmacion.usuario} seleccionó 'Continuar sin actualizar precios' para la fecha (${estado.fecha}). Se activa alerta en pedidos.`
     );
   }
 
@@ -2847,14 +3138,15 @@ window.descargarPlantillaPreciosExcel = function() {
   estado.catalogo.forEach(prov => {
     (prov.productos || []).forEach(pr => {
       filas.push({
-        "ID_Proveedor": prov.id,
-        "Agricultor": prov.nombreComun,
-        "Razon_Social_Factura": prov.razonSocialFactura,
+        "Factura:": prov.razonSocialFactura,
+        "Proveedor": prov.nombreComun,
         "Producto": pr.producto,
-        "Precio_Unitario": pr.precio,
-        "Unidad_Medida": pr.unidadMedida,
-        "Condicion_Comercial": pr.condicion || "CREDITO 30 DIAS",
-        "Negociador": prov.encargadoLogistica || "CLAUDIA MARQUEZ"
+        "Precios": pr.precio,
+        "U.M.": pr.unidadMedida,
+        "Negociador": pr.negociador || prov.encargadoLogistica || "CLAUDIA MARQUEZ",
+        "Vigente": pr.vigente === false ? "NO" : "SI",
+        "Nuevas condiciones Comerciales": pr.condicion || "",
+        "Notas / Recargos": pr.notas || ""
       });
     });
   });
@@ -2866,9 +3158,482 @@ window.descargarPlantillaPreciosExcel = function() {
   mostrarToast("📥 Plantilla Excel de precios descargada.");
 };
 
+// ============================================================================
+// 📥 MOTOR ROBUSTO DE IMPORTACIÓN DE EXCEL / TABLA DE PRECIOS
+// Soporta el formato corporativo (Factura:, Proveedor, Producto, Precios, U.M.,
+// Negociador, Vigente, Nuevas condiciones Comerciales) y la plantilla estándar.
+// ============================================================================
+function normalizarEncabezadoExcel(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[:._\-/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizarClaveEntidad(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/s\.?\s*a\.?\s*s\.?/gi, "sas")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function aTituloCorporativo(str) {
+  return String(str || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function parsearPrecioExcel(valorRaw, textoFormateado = "") {
+  const txtFmt = String(textoFormateado || "").trim();
+  if (typeof valorRaw === "number") {
+    if (!isFinite(valorRaw) || valorRaw <= 0) return 0;
+    if (txtFmt && /^\$?\s*\d{1,3}(\.\d{3})+$/.test(txtFmt)) {
+      return parseInt(txtFmt.replace(/\D/g, ""), 10) || 0;
+    }
+    if (valorRaw >= 100) {
+      return Math.round(valorRaw * 100) / 100;
+    }
+    if (valorRaw > 0 && valorRaw < 100 && String(valorRaw).includes(".")) {
+      return Math.round(valorRaw * 1000);
+    }
+    return valorRaw;
+  }
+
+  let s = String(valorRaw !== undefined && valorRaw !== null && String(valorRaw).trim() !== "" ? valorRaw : txtFmt).trim();
+  if (!s) return 0;
+  s = s.replace(/[$]|COP|\s+/gi, "");
+  if (!s) return 0;
+
+  if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+    return parseInt(s.replace(/\./g, ""), 10) || 0;
+  }
+  if (/^\d{1,3}(\.\d{3})+,\d{1,2}$/.test(s)) {
+    return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+  }
+  if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(s)) {
+    return parseFloat(s.replace(/,/g, "")) || 0;
+  }
+  if (/^\d+,\d{1,2}$/.test(s)) {
+    return parseFloat(s.replace(",", ".")) || 0;
+  }
+  return parsearNumeroMiles(s);
+}
+
+function obtenerAliasProductoCanonico(nomProd) {
+  const n = normalizarClaveEntidad(nomProd);
+  if (n === "h verde" || n === "h verde lechuga" || n === "lechuga h verde" || n === "lechuga verde") {
+    return "h verde lechuga";
+  }
+  if (n === "morada crespa falbala" || n === "morada crespa" || n === "lechuga morada crespa" || n === "lechuga morada crespa falbala") {
+    return "morada crespa falbala";
+  }
+  return n;
+}
+
+function formatearNombreProductoParaCatalogo(nomProdRaw) {
+  const alias = obtenerAliasProductoCanonico(nomProdRaw);
+  const mapaNombres = {
+    "h verde lechuga": "H Verde (Lechuga)",
+    "morada crespa falbala": "Morada Crespa Falbala",
+    "rugula": "Rúgula",
+    "brocoli": "Brócoli",
+    "espinaca": "Espinaca",
+    "espinaca baby": "Espinaca Baby",
+    "espinaca bolsa": "Espinaca Bolsa",
+    "espinaca bogotana": "Espinaca Bogotana",
+    "tomate cherry": "Tomate Cherry",
+    "tomate uvalina": "Tomate Uvalina",
+    "alcachofa": "Alcachofa",
+    "acelga": "Acelga",
+    "apio": "Apio",
+    "cilantro": "Cilantro",
+    "coliflor": "Coliflor",
+    "perejil crespo": "Perejil Crespo",
+    "perejil liso": "Perejil Liso"
+  };
+  if (mapaNombres[alias]) return mapaNombres[alias];
+  return aTituloCorporativo(nomProdRaw);
+}
+
+function coincidenNombresProveedorTokens(normA, normB) {
+  if (!normA || !normB) return false;
+  const tokA = normA.split(" ").filter(t => t.length >= 2);
+  const tokB = normB.split(" ").filter(t => t.length >= 2);
+  if (tokA.length === 0 || tokB.length === 0) return false;
+
+  const [corto, largo] = tokA.length <= tokB.length ? [tokA, tokB] : [tokB, tokA];
+  if (corto.length === 1 && corto[0].length < 4) return false;
+
+  return corto.every(t =>
+    largo.some(u => u === t || (t.length >= 4 && u.length >= 4 && (u.startsWith(t) || t.startsWith(u))))
+  );
+}
+
+function parsearVigenteExcel(vigRaw) {
+  const v = normalizarClaveEntidad(vigRaw);
+  if (!v) return null;
+  if (["no", "false", "0", "n", "inactivo", "inactiva"].includes(v)) return false;
+  if (["si", "true", "1", "s", "activo", "activa", "yes"].includes(v)) return true;
+  return null;
+}
+
+function buscarOCrearProveedorParaExcel(idProvRaw, facturaRaw, provRaw, negociadorRaw, nomProdRaw) {
+  const idLimpio = String(idProvRaw || "").trim();
+  if (idLimpio) {
+    const porId = estado.catalogo.find(p => p.id === idLimpio);
+    if (porId) return { prov: porId, esNuevo: false };
+  }
+
+  const factNorm = normalizarClaveEntidad(facturaRaw);
+  const provNorm = normalizarClaveEntidad(provRaw);
+
+  if (factNorm) {
+    let matchFact = estado.catalogo.find(p => normalizarClaveEntidad(p.razonSocialFactura) === factNorm);
+    if (!matchFact) {
+      matchFact = estado.catalogo.find(p => {
+        const segmentos = String(p.razonSocialFactura || "").split("/").map(s => normalizarClaveEntidad(s)).filter(Boolean);
+        return segmentos.some(seg => seg === factNorm || (factNorm.length >= 6 && seg.includes(factNorm)) || (seg.length >= 6 && factNorm.includes(seg)));
+      });
+    }
+    if (!matchFact) {
+      matchFact = estado.catalogo.find(p => coincidenNombresProveedorTokens(factNorm, normalizarClaveEntidad(p.razonSocialFactura)));
+    }
+    if (matchFact) return { prov: matchFact, esNuevo: false };
+  }
+
+  if (provNorm) {
+    const matchExacto = estado.catalogo.find(p =>
+      normalizarClaveEntidad(p.nombreComun) === provNorm ||
+      normalizarClaveEntidad(p.razonSocialFactura) === provNorm
+    );
+    if (matchExacto) return { prov: matchExacto, esNuevo: false };
+
+    if (!factNorm) {
+      const matchTokens = estado.catalogo.find(p =>
+        coincidenNombresProveedorTokens(provNorm, normalizarClaveEntidad(p.nombreComun)) ||
+        coincidenNombresProveedorTokens(provNorm, normalizarClaveEntidad(p.razonSocialFactura))
+      );
+      if (matchTokens) return { prov: matchTokens, esNuevo: false };
+    }
+  }
+
+  const nombreComunNuevo = aTituloCorporativo(provRaw || facturaRaw || "Proveedor Nuevo");
+  const razonNueva = String(facturaRaw || provRaw || nombreComunNuevo).trim().toUpperCase();
+  const negUpper = String(negociadorRaw || "").toUpperCase();
+  const esClaudia = negUpper.includes("CLAUDIA");
+  const prodLower = normalizarClaveEntidad(nomProdRaw);
+  const slugBase = (provNorm || factNorm || "nuevo").replace(/\s+/g, "-").slice(0, 28);
+
+  const nuevoProv = {
+    id: `agr-${slugBase}-${Math.random().toString(36).substr(2, 4)}`,
+    nombreComun: nombreComunNuevo,
+    razonSocialFactura: razonNueva,
+    contacto: "",
+    ubicacion: "Finca",
+    horaCampo: "",
+    horaPlanta: prodLower.includes("tomate") ? "07:00" : "11:00",
+    tiempoFinca: "",
+    responsableTransporte: "TERCERO",
+    encargadoLogistica: esClaudia ? "CLAUDIA MARQUEZ" : "CAMILO ROMERO",
+    diasEntrega: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    productos: []
+  };
+  estado.catalogo.push(nuevoProv);
+  return { prov: nuevoProv, esNuevo: true };
+}
+
+function extraerMatrizDeHojaXLSX(hoja) {
+  if (!hoja || !hoja["!ref"]) return [];
+  const rango = XLSX.utils.decode_range(hoja["!ref"]);
+  const matriz = [];
+  for (let r = rango.s.r; r <= rango.e.r; r++) {
+    const fila = [];
+    for (let c = rango.s.c; c <= rango.e.c; c++) {
+      const ref = XLSX.utils.encode_cell({ r, c });
+      const celda = hoja[ref];
+      if (!celda) {
+        fila.push({ v: "", w: "" });
+      } else {
+        fila.push({
+          v: celda.v !== undefined && celda.v !== null ? celda.v : "",
+          w: celda.w !== undefined && celda.w !== null ? String(celda.w) : String(celda.v !== undefined && celda.v !== null ? celda.v : "")
+        });
+      }
+    }
+    matriz.push(fila);
+  }
+  return matriz;
+}
+
+function detectarColumnasEncabezadoPrecios(matriz) {
+  const aliases = {
+    idProveedor: ["id proveedor", "id"],
+    factura: ["factura", "razon social", "razon social factura", "facturar a"],
+    proveedor: ["proveedor", "aliado", "nombre", "agricultor"],
+    producto: ["producto", "hortaliza", "item"],
+    precio: ["precios", "precio", "precio unitario", "valor", "tarifa"],
+    unidad: ["u m", "um", "unidad", "unidad medida"],
+    negociador: ["negociador", "comprador", "encargado"],
+    vigente: ["vigente", "activo", "estado"],
+    condicion: ["nuevas condiciones comerciales", "nuevas condiciones", "condicion comercial", "condicion", "condiciones", "plazo"],
+    notas: ["notas", "observaciones", "nota", "recargo", "recargo festivo", "festivos", "adicional", "notas recargos"]
+  };
+
+  const limite = Math.min(matriz.length, 15);
+  for (let r = 0; r < limite; r++) {
+    const fila = matriz[r] || [];
+    const indices = {};
+    fila.forEach((celda, colIdx) => {
+      const norm = normalizarEncabezadoExcel(celda && celda.v !== undefined ? celda.v : celda);
+      if (!norm) return;
+      Object.keys(aliases).forEach(campo => {
+        if (indices[campo] === undefined && aliases[campo].includes(norm)) {
+          indices[campo] = colIdx;
+        }
+      });
+    });
+
+    const tieneProducto = indices.producto !== undefined;
+    const tieneOtro = indices.precio !== undefined || indices.proveedor !== undefined || indices.factura !== undefined;
+    if (tieneProducto && tieneOtro) {
+      return { headerRowIdx: r, indices };
+    }
+  }
+  return null;
+}
+
+window.procesarMatrizActualizacionPrecios = function(matriz, nombreOrigen = "Excel", cerrarModalAlertaAlFinal = false) {
+  const deteccion = detectarColumnasEncabezadoPrecios(matriz);
+  if (!deteccion) {
+    alert(
+      "No se reconocieron las columnas de precios en el archivo.\n\n" +
+      "Asegúrate de que tenga una fila de encabezados con columnas como:\n" +
+      "Factura | Proveedor | Producto | Precios | U.M. | Negociador | Vigente | Nuevas condiciones Comerciales"
+    );
+    return { ok: false, actualizados: 0, agregados: 0, proveedoresNuevos: 0 };
+  }
+
+  const { headerRowIdx, indices } = deteccion;
+  const maxHeaderCol = Math.max(...Object.values(indices));
+  const leerCelda = (fila, idx) => {
+    if (idx === undefined || !fila[idx]) return { v: "", w: "" };
+    const c = fila[idx];
+    if (typeof c === "object" && c !== null && ("v" in c || "w" in c)) return c;
+    return { v: c, w: String(c) };
+  };
+
+  let actualizados = 0;
+  let agregados = 0;
+  let proveedoresNuevos = 0;
+  let filasProcesadas = 0;
+  const ahoraIso = new Date().toISOString();
+
+  for (let r = headerRowIdx + 1; r < matriz.length; r++) {
+    const fila = matriz[r];
+    if (!fila || fila.length === 0) continue;
+
+    const idProv = String(leerCelda(fila, indices.idProveedor).v || "").trim();
+    const factura = String(leerCelda(fila, indices.factura).v || "").trim();
+    const proveedor = String(leerCelda(fila, indices.proveedor).v || "").trim();
+    const productoRaw = String(leerCelda(fila, indices.producto).v || "").trim();
+    const celdaPrecio = leerCelda(fila, indices.precio);
+    const unidad = String(leerCelda(fila, indices.unidad).v || "").trim();
+    const negociador = String(leerCelda(fila, indices.negociador).v || "").trim();
+    const vigenteRaw = String(leerCelda(fila, indices.vigente).v || "").trim();
+    const condicion = String(leerCelda(fila, indices.condicion).v || "").trim();
+
+    const partesNotas = [];
+    if (indices.notas !== undefined) {
+      const nCol = String(leerCelda(fila, indices.notas).v || "").trim();
+      if (nCol) partesNotas.push(nCol);
+    }
+    for (let c = maxHeaderCol + 1; c < fila.length; c++) {
+      if (c === indices.notas) continue;
+      const extraTxt = String(leerCelda(fila, c).v || "").trim();
+      if (extraTxt) partesNotas.push(extraTxt);
+    }
+    const notasFila = partesNotas.join(" | ").trim();
+
+    if (!productoRaw && !proveedor && !factura) continue;
+    const prodUpper = productoRaw.toUpperCase();
+    if (!productoRaw || prodUpper === "TOTAL" || prodUpper === "TOTAL COMPRAS") continue;
+
+    const nuevoPrecio = parsearPrecioExcel(celdaPrecio.v, celdaPrecio.w);
+    const vigenteParsed = parsearVigenteExcel(vigenteRaw);
+    const esCorte = normalizarClaveEntidad(unidad) === "corte";
+
+    if (nuevoPrecio <= 0 && !esCorte && vigenteParsed !== false) {
+      continue;
+    }
+
+    const { prov, esNuevo } = buscarOCrearProveedorParaExcel(idProv, factura, proveedor, negociador, productoRaw);
+    if (esNuevo) proveedoresNuevos++;
+    if (!Array.isArray(prov.productos)) prov.productos = [];
+
+    const aliasObjetivo = obtenerAliasProductoCanonico(productoRaw);
+    let prodExistente = prov.productos.find(pr => obtenerAliasProductoCanonico(pr.producto) === aliasObjetivo);
+
+    const notasNorm = normalizarTextoBasico(notasFila);
+    const esAngelicaGabriel = prov.id === "agr-gabriel-castaneda" || normalizarTextoBasico(prov.razonSocialFactura || "").includes("nino nino angelica maria");
+    const esBabyORugula = aliasObjetivo === "espinaca baby" || aliasObjetivo === "rugula";
+    let recargoDetectado = 0;
+    if (notasNorm && (notasNorm.includes("festiv") || notasNorm.includes("domingo") || notasNorm.includes("(+)"))) {
+      const mRec = notasNorm.match(/(\d[\d.]*)/);
+      const valRec = mRec ? parsearPrecioExcel(mRec[1], mRec[1]) : 500;
+      recargoDetectado = valRec > 0 ? valRec : 500;
+    } else if (esAngelicaGabriel && esBabyORugula) {
+      recargoDetectado = 500;
+    }
+
+    if (prodExistente) {
+      prodExistente.precio = nuevoPrecio;
+      if (unidad) prodExistente.unidadMedida = unidad;
+      if (negociador) prodExistente.negociador = negociador;
+      prodExistente.vigente = vigenteParsed !== null ? vigenteParsed : true;
+      if (indices.condicion !== undefined) {
+        prodExistente.condicion = condicion;
+      }
+      if (recargoDetectado > 0) {
+        prodExistente.recargoFestivo = recargoDetectado;
+        prodExistente.notas = notasFila ? (notasNorm.includes("domingo") ? notasFila : "$500 (+) domingos y festivos") : "$500 (+) domingos y festivos";
+      } else if (notasFila) {
+        prodExistente.notas = notasFila;
+      } else if (esCorte && !prodExistente.notas) {
+        prodExistente.notas = "corte - con la fecha de la factura";
+      }
+      actualizados++;
+    } else {
+      const nombreNegDefault = negociador || ((estado.perfilActivo && PERFILES[estado.perfilActivo]) ? PERFILES[estado.perfilActivo].nombre : "Camilo Romero");
+      prov.productos.push({
+        producto: formatearNombreProductoParaCatalogo(productoRaw),
+        precio: nuevoPrecio,
+        ...(recargoDetectado > 0 ? { recargoFestivo: recargoDetectado } : {}),
+        unidadMedida: unidad || "Kg",
+        negociador: nombreNegDefault,
+        vigente: vigenteParsed !== null ? vigenteParsed : true,
+        condicion: condicion,
+        notas: recargoDetectado > 0
+          ? "$500 (+) domingos y festivos"
+          : (notasFila || (esCorte ? "corte - con la fecha de la factura" : ""))
+      });
+      agregados++;
+    }
+
+    prov.ultimaActualizacionPrecio = ahoraIso;
+    filasProcesadas++;
+  }
+
+  localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+  localStorage.setItem("agri_catalogo_version", CATALOGO_VERSION_ACTUAL);
+
+  const claveCorte = obtenerClaveCorteQuincenal(estado.fecha);
+  const usuarioActual = (estado.perfilActivo && PERFILES[estado.perfilActivo]) ? PERFILES[estado.perfilActivo].nombre : "María Claudia Márquez";
+  localStorage.setItem("agri_mc_confirmacion_" + claveCorte, JSON.stringify({
+    fecha: estado.fecha,
+    usuario: usuarioActual,
+    accion: "EXCEL_PRECIOS_CARGADO",
+    productosActualizados: actualizados + agregados,
+    alertaPreciosSinActualizar: false,
+    timestamp: ahoraIso
+  }));
+  localStorage.removeItem("agri_alerta_precios_sin_actualizar_" + estado.fecha);
+
+  if (typeof registrarEventoAuditoriaSeguridad === "function") {
+    registrarEventoAuditoriaSeguridad(
+      "EXCEL_PRECIOS_ACTUALIZADOS",
+      `${usuarioActual} procesó '${nombreOrigen}': ${actualizados} actualizados, ${agregados} agregados, ${proveedoresNuevos} proveedores nuevos.`
+    );
+  }
+
+  const resumenMsg = `✅ Procesado '${nombreOrigen}': ${actualizados} tarifas actualizadas, ${agregados} productos nuevos${proveedoresNuevos > 0 ? `, ${proveedoresNuevos} proveedores creados` : ""}.`;
+
+  const lblResMC = document.getElementById("lblResultadoExcelMC");
+  if (lblResMC) {
+    lblResMC.innerText = resumenMsg;
+    lblResMC.classList.remove("hidden");
+  }
+  const lblResGestion = document.getElementById("lblResultadoExcelGestion");
+  if (lblResGestion) {
+    lblResGestion.innerText = resumenMsg;
+    lblResGestion.classList.remove("hidden");
+  }
+
+  if (!document.getElementById("modalGestionPrecios")?.classList.contains("hidden")) {
+    renderizarOpcionesSelectProveedoresPrecios();
+  }
+  renderizarSelectFiltroProductos();
+  renderizarSemaforoCobertura();
+  renderizarListaProveedoresSugeridos();
+  renderizarTorreControlGerencia();
+  renderizarPedidosDelDia();
+  if (typeof publicarEstadoEnNubeMultidispositivo === "function") publicarEstadoEnNubeMultidispositivo();
+
+  mostrarToast(`📥 ${actualizados + agregados} tarifas aplicadas con éxito desde '${nombreOrigen}'.`);
+
+  if (cerrarModalAlertaAlFinal) {
+    setTimeout(() => {
+      const modal = document.getElementById("modalAlertaQuincenalMC");
+      if (modal) modal.classList.add("hidden");
+    }, 1400);
+  }
+
+  return { ok: true, filasProcesadas, actualizados, agregados, proveedoresNuevos };
+};
+
+window.importarPreciosDesdeTextoPegado = function() {
+  const txt = document.getElementById("txtPegarTablaExcelPrecios");
+  const raw = txt ? txt.value : "";
+  if (!raw || !raw.trim()) {
+    alert("Por favor pega primero las filas copiadas desde Excel (incluyendo la fila de encabezados).");
+    return;
+  }
+
+  const lineas = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim() !== "");
+  const separador = lineas.some(l => l.includes("\t")) ? "\t" : (lineas.some(l => l.includes(";")) ? ";" : ",");
+  const matriz = lineas.map(linea => linea.split(separador).map(celda => ({ v: celda.trim(), w: celda.trim() })));
+
+  const res = procesarMatrizActualizacionPrecios(matriz, "Tabla pegada de Excel", false);
+  if (res && res.ok && txt) {
+    txt.value = "";
+    const bloque = document.getElementById("bloquePegarExcelPrecios");
+    if (bloque) bloque.classList.add("hidden");
+  }
+};
+
 window.subirExcelActualizacionPreciosMC = function(event) {
-  const archivo = event && event.target && event.target.files ? event.target.files[0] : null;
+  const inputEl = event && event.target ? event.target : null;
+  const archivo = inputEl && inputEl.files ? inputEl.files[0] : null;
   if (!archivo) return;
+
+  const esDesdeModalAlerta = inputEl && inputEl.id === "inputExcelPreciosMC";
+  const nombreLower = (archivo.name || "").toLowerCase();
+
+  if (nombreLower.endsWith(".csv") || nombreLower.endsWith(".tsv") || nombreLower.endsWith(".txt")) {
+    archivo.text().then(texto => {
+      try {
+        const libro = XLSX.read(String(texto || "").replace(/^\uFEFF/, ""), { type: "string" });
+        const hoja = libro.Sheets[libro.SheetNames[0]];
+        const matriz = extraerMatrizDeHojaXLSX(hoja);
+        procesarMatrizActualizacionPrecios(matriz, archivo.name, esDesdeModalAlerta);
+      } catch (err) {
+        alert("Error al leer el archivo CSV/texto. Verifica el formato.");
+      } finally {
+        if (inputEl) inputEl.value = "";
+      }
+    }).catch(() => {
+      alert("No se pudo leer el archivo seleccionado.");
+      if (inputEl) inputEl.value = "";
+    });
+    return;
+  }
 
   const lector = new FileReader();
   lector.onload = function(e) {
@@ -2877,66 +3642,12 @@ window.subirExcelActualizacionPreciosMC = function(event) {
       const libro = XLSX.read(datos, { type: "array" });
       const nombreHoja = libro.SheetNames[0];
       const hoja = libro.Sheets[nombreHoja];
-      const filasJson = XLSX.utils.sheet_to_json(hoja, { defval: "" });
-
-      let actualizados = 0;
-      filasJson.forEach(fila => {
-        const nomProv = String(fila["Agricultor"] || fila["Proveedor"] || fila["PROVEEDOR"] || fila["Nombre"] || "").trim().toLowerCase();
-        const nomProd = String(fila["Producto"] || fila["PRODUCTO"] || fila["Hortaliza"] || "").trim().toLowerCase();
-        const precioRaw = fila["Precio_Unitario"] || fila["Precio"] || fila["PRECIO"] || fila["Valor"] || 0;
-        const nuevoPrecio = parseFloat(String(precioRaw).replace(/[^0-9.]/g, "")) || 0;
-
-        if (nomProd && nuevoPrecio > 0) {
-          estado.catalogo.forEach(prov => {
-            const coincideProv = !nomProv || prov.nombreComun.toLowerCase().includes(nomProv) || prov.razonSocialFactura.toLowerCase().includes(nomProv);
-            if (coincideProv && Array.isArray(prov.productos)) {
-              prov.productos.forEach(pr => {
-                if (pr.producto.toLowerCase().includes(nomProd) || nomProd.includes(pr.producto.toLowerCase())) {
-                  pr.precio = nuevoPrecio;
-                  pr.vigente = true;
-                  actualizados++;
-                }
-              });
-            }
-          });
-        }
-      });
-
-      localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
-      const claveCorte = obtenerClaveCorteQuincenal(estado.fecha);
-      localStorage.setItem("agri_mc_confirmacion_" + claveCorte, JSON.stringify({
-        fecha: estado.fecha,
-        usuario: "María Claudia Márquez",
-        accion: "EXCEL_PRECIOS_CARGADO",
-        productosActualizados: actualizados,
-        alertaPreciosSinActualizar: false,
-        timestamp: new Date().toISOString()
-      }));
-      localStorage.removeItem("agri_alerta_precios_sin_actualizar_" + estado.fecha);
-
-      if (typeof registrarEventoAuditoriaSeguridad === "function") {
-        registrarEventoAuditoriaSeguridad(
-          "EXCEL_PRECIOS_MC",
-          `Sra. María Claudia cargó Excel '${archivo.name}' (${actualizados} tarifas actualizadas)`
-        );
-      }
-
-      const lblRes = document.getElementById("lblResultadoExcelMC");
-      if (lblRes) {
-        lblRes.innerText = `✅ Se actualizaron ${actualizados} tarifas desde '${archivo.name}'.`;
-        lblRes.classList.remove("hidden");
-      }
-
-      renderizarSemaforoCobertura();
-      renderizarListaProveedoresSugeridos();
-      mostrarToast(`📥 Excel procesado: ${actualizados} precios actualizados con éxito.`);
-
-      setTimeout(() => {
-        const modal = document.getElementById("modalAlertaQuincenalMC");
-        if (modal) modal.classList.add("hidden");
-      }, 1400);
+      const matriz = extraerMatrizDeHojaXLSX(hoja);
+      procesarMatrizActualizacionPrecios(matriz, archivo.name, esDesdeModalAlerta);
     } catch (err) {
-      alert("Error al leer el archivo Excel. Verifica que sea un archivo .xlsx o .xls válido.");
+      alert("Error al leer el archivo Excel. Verifica que sea un archivo .xlsx, .xls o .csv válido.");
+    } finally {
+      if (inputEl) inputEl.value = "";
     }
   };
   lector.readAsArrayBuffer(archivo);
@@ -3586,7 +4297,7 @@ window.abrirModalConfirmacionWhatsAppPedido = function(idPedido) {
 
 window.previsualizarWhatsAppProveedorActual = function() {
   if (!estado.proveedorSeleccionado) {
-    alert("Selecciona primero un agricultor.");
+    alert("Selecciona primero un Aliado.");
     return;
   }
   const itemsTemp = [];
@@ -3776,7 +4487,7 @@ function renderizarListaModalMasivoWA() {
   const miTelPrueba = document.getElementById("inputTelefonoPruebaMasivo")?.value || "";
 
   if (lblResumen) {
-    lblResumen.innerText = `${pedidos.length} agricultores programados para hoy (${formatearFecha(estado.fecha)})`;
+    lblResumen.innerText = `${pedidos.length} Aliadoes programados para hoy (${formatearFecha(estado.fecha)})`;
   }
 
   if (pedidos.length === 0) {
@@ -3838,7 +4549,7 @@ window.enviarConfirmacionIndividualDesdeMasivo = function(idPedido) {
   } else {
     telDestino = limpiarNumeroTelefonoWA(ped.proveedor.contacto);
     if (!telDestino) {
-      const manual = prompt(`El agricultor ${ped.proveedor.nombreComun} no tiene teléfono registrado. Ingresa su número de WhatsApp (ej. 3101234567):`);
+      const manual = prompt(`El Aliado ${ped.proveedor.nombreComun} no tiene teléfono registrado. Ingresa su número de WhatsApp (ej. 3101234567):`);
       telDestino = limpiarNumeroTelefonoWA(manual);
       if (!telDestino) return;
     }
@@ -4327,8 +5038,10 @@ window.sincronizarDesdeNubeHaciaDispositivo = async function(silencioso = true) 
           }
         });
         if (huboCambioCatalogo) {
-          localStorage.setItem("agri_catalogo_v4", JSON.stringify(estado.catalogo));
-          renderizarListaProveedores();
+          localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
+          renderizarSelectFiltroProductos();
+          renderizarSemaforoCobertura();
+          renderizarListaProveedoresSugeridos();
         }
       }
 
@@ -4487,7 +5200,7 @@ function obtenerFilasFiltradasSQL() {
         usuarioNombre: ped.usuarioNombre || "Camilo Romero",
         horaPlanta: ped.proveedor.horaPlanta || "11:00",
         transporte: ped.proveedor.responsableTransporte || "TERCERO",
-        agricultor: ped.proveedor.nombreComun || "",
+        Aliado: ped.proveedor.nombreComun || "",
         razonSocial: ped.proveedor.razonSocialFactura || "",
         telefono: ped.proveedor.contacto || "",
         producto: it.producto + (it.modalidadBrocoli ? ` (${it.modalidadBrocoli})` : ""),
@@ -4523,7 +5236,7 @@ window.renderizarTablaHistoricoSQL = function() {
   let sumaValor = 0;
 
   filas.forEach(f => {
-    provsUnicos.add(f.agricultor.toLowerCase());
+    provsUnicos.add(f.Aliado.toLowerCase());
     sumaUnidades += f.cantidad;
     sumaValor += f.subtotal;
   });
@@ -4544,7 +5257,7 @@ window.renderizarTablaHistoricoSQL = function() {
       <td class="p-2 font-bold text-slate-700">${f.fecha}</td>
       <td class="p-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${f.usuarioId === 'camilo' ? 'bg-emerald-100 text-emerald-800' : f.usuarioId === 'claudia' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-900'}">${f.usuarioNombre}</span></td>
       <td class="p-2 font-bold">${f.horaPlanta}</td>
-      <td class="p-2 font-black text-slate-900">${f.agricultor}</td>
+      <td class="p-2 font-black text-slate-900">${f.Aliado}</td>
       <td class="p-2 font-bold text-slate-800">${f.producto}</td>
       <td class="p-2 text-right font-black text-emerald-900">${fmtMiles(f.cantidad)} ${f.unidad}</td>
       <td class="p-2 text-right font-semibold text-slate-700">$ ${fmtMiles(f.precioUnitario)}</td>
@@ -4570,7 +5283,7 @@ window.exportarHistoricoExcelConsolidado = function() {
       "Perfil Comprador": f.usuarioNombre,
       "Hora Llegada Planta": f.horaPlanta,
       "Transporte": f.transporte,
-      "Agricultor": f.agricultor,
+      "Aliado": f.Aliado,
       "Razón Social Factura": f.razonSocial,
       "Teléfono": f.telefono,
       "Producto": f.producto,
@@ -4589,7 +5302,7 @@ window.exportarHistoricoExcelConsolidado = function() {
     "Perfil Comprador": "",
     "Hora Llegada Planta": "",
     "Transporte": "",
-    "Agricultor": "",
+    "Aliado": "",
     "Razón Social Factura": "",
     "Teléfono": "",
     "Producto": "",
@@ -4634,7 +5347,7 @@ window.exportarBaseDatosSQLArchivo = function() {
     `  comprador_nombre VARCHAR(120) NOT NULL,`,
     `  hora_planta VARCHAR(20),`,
     `  modalidad_transporte VARCHAR(40),`,
-    `  agricultor_nombre VARCHAR(180) NOT NULL,`,
+    `  Aliado_nombre VARCHAR(180) NOT NULL,`,
     `  razon_social_factura VARCHAR(200),`,
     `  telefono_contacto VARCHAR(60),`,
     `  producto VARCHAR(160) NOT NULL,`,
@@ -4652,7 +5365,7 @@ window.exportarBaseDatosSQLArchivo = function() {
   filas.forEach((f, idx) => {
     const idUnico = `${f.pedidoId}_${f.itemId || idx}`;
     lineasSQL.push(
-      `INSERT INTO pedidos_agricolas_historico (id_registro, fecha_entrega, perfil_id, comprador_nombre, hora_planta, modalidad_transporte, agricultor_nombre, razon_social_factura, telefono_contacto, producto, cantidad, unidad_medida, precio_unitario_cop, subtotal_cop, cliente_destino, condicion_comercial, observaciones) VALUES ('${esc(idUnico)}', '${esc(f.fecha)}', '${esc(f.usuarioId)}', '${esc(f.usuarioNombre)}', '${esc(f.horaPlanta)}', '${esc(f.transporte)}', '${esc(f.agricultor)}', '${esc(f.razonSocial)}', '${esc(f.telefono)}', '${esc(f.producto)}', ${f.cantidad}, '${esc(f.unidad)}', ${f.precioUnitario}, ${f.subtotal}, '${esc(f.clienteDestino)}', '${esc(f.condicionPago)}', '${esc(f.observaciones)}');`
+      `INSERT INTO pedidos_agricolas_historico (id_registro, fecha_entrega, perfil_id, comprador_nombre, hora_planta, modalidad_transporte, Aliado_nombre, razon_social_factura, telefono_contacto, producto, cantidad, unidad_medida, precio_unitario_cop, subtotal_cop, cliente_destino, condicion_comercial, observaciones) VALUES ('${esc(idUnico)}', '${esc(f.fecha)}', '${esc(f.usuarioId)}', '${esc(f.usuarioNombre)}', '${esc(f.horaPlanta)}', '${esc(f.transporte)}', '${esc(f.Aliado)}', '${esc(f.razonSocial)}', '${esc(f.telefono)}', '${esc(f.producto)}', ${f.cantidad}, '${esc(f.unidad)}', ${f.precioUnitario}, ${f.subtotal}, '${esc(f.clienteDestino)}', '${esc(f.condicionPago)}', '${esc(f.observaciones)}');`
     );
   });
 
@@ -4686,7 +5399,7 @@ window.enviarReporteHistoricoOutlook = function() {
   let sumaTotal = 0;
   const resumenLineas = filas.slice(0, 35).map(f => {
     sumaTotal += f.subtotal;
-    return `• [${f.fecha} | ${f.usuarioNombre}] ${f.agricultor} -> ${f.producto}: ${fmtMiles(f.cantidad)} ${f.unidad} x $ ${fmtMiles(f.precioUnitario)} = $ ${fmtMiles(f.subtotal)} (Destino: ${f.clienteDestino})`;
+    return `• [${f.fecha} | ${f.usuarioNombre}] ${f.Aliado} -> ${f.producto}: ${fmtMiles(f.cantidad)} ${f.unidad} x $ ${fmtMiles(f.precioUnitario)} = $ ${fmtMiles(f.subtotal)} (Destino: ${f.clienteDestino})`;
   });
 
   const asunto = `REPORTE OFICIAL DE COMPRAS AGROGESTIÓN (${desde} a ${hasta}) - ${PERFILES[estado.perfilActivo].nombre}`;
@@ -4733,7 +5446,7 @@ window.importarArchivosAlHistoricoSQL = async function(event) {
 
         filas.forEach((f, idx) => {
           const prod = String(f["Producto"] || "").trim();
-          const agric = String(f["Agricultor"] || f["Agricultor (Campo)"] || "").trim();
+          const agric = String(f["Aliado"] || f["Aliado (Campo)"] || "").trim();
           const cant = parsearNumeroMiles(f["Cantidad"]);
           const precio = parsearNumeroMiles(f["Precio Unitario ($)"] || f["Precio_Unitario"] || 0);
           if (!prod || !agric || cant <= 0 || agric === "TOTAL COMPRAS" || agric === "TOTAL CONSOLIDADO") return;

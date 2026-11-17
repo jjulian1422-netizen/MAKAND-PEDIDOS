@@ -190,9 +190,9 @@
             <span>👑</span> <span class="hidden sm:inline">Gerencia</span>
           </button>
 
-          <!-- Botón Alerta Corte 1 y 16 (Señora MC / Gerencia) -->
-          <button type="button" id="btnAlertaQuincenalHeader" onclick="abrirModalAlertaQuincenalMC(true)" class="text-xs bg-gradient-to-b from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-xs active:scale-95 hidden" title="Alerta Quincenal Días 1 y 16: Actualización de Precios">
-            <span>🔔</span> <span class="hidden md:inline">Corte 1 y 16</span>
+          <!-- Botón Actualización de Precios Excel / Corte 1 y 16 -->
+          <button type="button" id="btnAlertaQuincenalHeader" onclick="abrirModalAlertaQuincenalMC(true)" class="text-xs bg-gradient-to-b from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-xs active:scale-95 hidden" title="Subir Excel de Precios y Corte Quincenal (Días 1 y 16)">
+            <span>📥</span> <span class="hidden md:inline">Precios Excel</span>
           </button>
 
           <!-- Chip de Usuario Activo -->
@@ -251,10 +251,18 @@
           </button>
         </div>
 
-        <!-- Botón Día de la Semana / Volver a Hoy -->
-        <button type="button" id="badgeDiaSemana" onclick="irAHoy()" class="font-extrabold text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/80 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition active:scale-95 flex items-center gap-1.5 shadow-2xs truncate" title="Clic para ir a la fecha de hoy">
-          📅 Hoy
-        </button>
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+          <!-- Check Día Festivo (Suma +$500 en productos con recargo festivo/domingo) -->
+          <label id="lblContainerFestivoHeader" class="flex items-center gap-1.5 font-extrabold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition cursor-pointer shadow-2xs select-none" title="Marcar si la fecha seleccionada es Día Festivo (suma +$500 en Espinaca Baby y Rúgula de Gabriel Castañeda / Angélica Niño)">
+            <input type="checkbox" id="chkDiaFestivoHeader" onchange="toggleDiaFestivo(this.checked)" class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer">
+            <span id="lblTextoFestivoHeader">🎉 Es Festivo</span>
+          </label>
+
+          <!-- Botón Día de la Semana / Volver a Hoy -->
+          <button type="button" id="badgeDiaSemana" onclick="irAHoy()" class="font-extrabold text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 border border-emerald-200/80 px-2.5 sm:px-3 py-1 rounded-xl text-xs transition active:scale-95 flex items-center gap-1.5 shadow-2xs truncate" title="Clic para ir a la fecha de hoy">
+            📅 Hoy
+          </button>
+        </div>
 
       </div>
 
@@ -324,7 +332,7 @@
                 0 Pedidos
               </span>
             </div>
-            <p class="text-[10px] text-slate-500 hidden sm:block">Toca cualquier hortaliza para ver qué agricultores la tienen pactada y su precio</p>
+            <p class="text-[10px] text-slate-500 hidden sm:block">Toca cualquier hortaliza para ver qué Aliados la tienen pactada y su precio</p>
           </div>
         </div>
         <button type="button" onclick="toggleSemaforoMobile()" class="text-xs text-slate-600 hover:text-slate-950 font-bold bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200/80 px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1.5">
@@ -355,7 +363,7 @@
           <span class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-xl">🛒</span>
           <div>
             <h3 class="font-extrabold text-xs sm:text-base text-white flex items-center gap-1.5">
-              Agricultores Disponibles para: <span id="lblProductoFiltradoTitulo" class="text-emerald-400 font-black underline decoration-emerald-500/50"></span>
+              Aliados Disponibles para: <span id="lblProductoFiltradoTitulo" class="text-emerald-400 font-black underline decoration-emerald-500/50"></span>
             </h3>
             <p class="text-[10px] sm:text-xs text-slate-300">Ordenados inteligentemente: 1° Entregan hoy • 2° Mejor tarifa pactada</p>
           </div>
@@ -385,7 +393,7 @@
             <div class="flex items-center gap-2">
               <span class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-700 flex items-center justify-center text-xs font-black">🔍</span>
               <label for="inputBuscarProveedor" class="block text-xs sm:text-sm font-extrabold text-slate-900">
-                Seleccionar Agricultor o Razón Social
+                Seleccionar Aliado o Razón Social
               </label>
             </div>
             <button 
@@ -401,7 +409,7 @@
             <input 
               type="text" 
               id="inputBuscarProveedor" 
-              placeholder="Escribe el nombre del agricultor, razón social o producto..." 
+              placeholder="Escribe el nombre del aliado, razón social o producto..." 
               autocomplete="off"
               class="w-full h-12 pl-10 pr-4 rounded-2xl bg-slate-50/80 hover:bg-white focus:bg-white border border-slate-300/90 focus:border-emerald-500 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 transition shadow-inner"
             >
@@ -420,7 +428,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20"></span>
-                <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight" id="lblProvNombre">Nombre Agricultor</span>
+                <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight" id="lblProvNombre">Nombre Aliado</span>
                 <span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-extrabold">Ficha Activa</span>
               </div>
               <button type="button" onclick="cancelarCapturaProveedor()" class="text-slate-500 hover:text-rose-600 bg-white border border-slate-200/90 hover:border-rose-300 px-3 py-1 rounded-xl text-xs font-bold transition active:scale-95 shadow-2xs" title="Cerrar y limpiar formulario">
@@ -505,7 +513,7 @@
           <!-- BOTONES DE ACCIÓN DEL FORMULARIO CON BARRA DE TOTAL EN VIVO -->
           <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 text-white rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-lg border border-slate-700/80">
             <div>
-              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Pedido de este Agricultor:</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Pedido de este Aliado:</p>
               <p id="lblGranTotalFormulario" class="text-base sm:text-xl font-black text-emerald-400 tabular-nums">$ 0 <span class="text-xs text-slate-300 font-semibold">(0 líneas)</span></p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -581,7 +589,7 @@
                 type="button" 
                 onclick="abrirModalConfirmarATodosWhatsApp()" 
                 class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black px-2.5 sm:px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 active:scale-95 min-h-[38px]"
-                title="Confirmar pedidos a todos los agricultores por WhatsApp (con modo prueba a tu número)"
+                title="Confirmar pedidos a todos los Aliados por WhatsApp (con modo prueba a tu número)"
               >
                 <span>📲</span> <span class="hidden sm:inline">Confirmar a Todos</span><span class="sm:hidden">A Todos</span>
               </button>
@@ -608,7 +616,7 @@
           <!-- MÉTRICAS CLAVE CON PUNTOS DE MIL Y DISTRIBUCIÓN POR DESTINO -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 text-center tabular-nums">
             <div class="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-200/80 shadow-2xs">
-              <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Agricultores</p>
+              <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Aliados</p>
               <p id="statTotalProveedores" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0</p>
             </div>
             <div class="bg-slate-50/90 rounded-2xl p-2.5 border border-slate-200/80 shadow-2xs">
@@ -686,10 +694,47 @@
         </button>
       </div>
 
+      <!-- Barra Ejecutiva: Carga Masiva de Precios desde Excel -->
+      <div class="p-3.5 sm:p-4 border-b border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/80 to-slate-50 space-y-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-black text-emerald-950 uppercase tracking-wide flex items-center gap-1.5">
+              <span>📊</span> Actualización Masiva desde Excel (.xlsx, .xls, .csv)
+            </h4>
+            <p class="text-[11px] text-slate-600">
+              Soporta columnas: <strong>Factura:</strong>, <strong>Proveedor</strong>, <strong>Producto</strong>, <strong>Precios</strong>, <strong>U.M.</strong>, <strong>Negociador</strong>, <strong>Vigente</strong> y <strong>Nuevas condiciones Comerciales</strong>.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <label class="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition shadow-sm active:scale-95">
+              <span>📂</span> Subir Archivo Excel
+              <input type="file" id="inputExcelPreciosGestion" accept=".xlsx,.xls,.csv,.tsv" onchange="subirExcelActualizacionPreciosMC(event)" class="hidden">
+            </label>
+            <button type="button" onclick="toggleBloquePegarExcelPrecios()" class="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 rounded-xl text-xs flex items-center gap-1 transition shadow-xs active:scale-95">
+              <span>📋</span> Pegar tabla de Excel
+            </button>
+            <button type="button" onclick="descargarPlantillaPreciosExcel()" class="h-10 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-3 rounded-xl text-xs flex items-center gap-1 transition shadow-2xs active:scale-95">
+              <span>⬇️</span> Plantilla
+            </button>
+          </div>
+        </div>
+
+        <div id="bloquePegarExcelPrecios" class="hidden bg-white border border-indigo-200 rounded-2xl p-3 space-y-2">
+          <p class="text-[11px] font-bold text-indigo-950">Copia las celdas desde Excel (incluyendo los encabezados) y pégalas aquí:</p>
+          <textarea id="txtPegarTablaExcelPrecios" rows="4" placeholder="Factura:&#9;Proveedor&#9;Producto&#9;Precios&#9;U.M.&#9;Negociador&#9;Vigente&#9;Nuevas condiciones Comerciales" class="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-mono text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <div class="flex items-center justify-end gap-2">
+            <button type="button" onclick="toggleBloquePegarExcelPrecios()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl">Cancelar</button>
+            <button type="button" onclick="importarPreciosDesdeTextoPegado()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs">✅ Aplicar Precios Pegados</button>
+          </div>
+        </div>
+
+        <p id="lblResultadoExcelGestion" class="text-xs font-bold text-emerald-800 bg-white/90 border border-emerald-200 px-3 py-2 rounded-xl hidden"></p>
+      </div>
+
       <!-- Filtro y Selección de Proveedor -->
       <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
         <div class="flex-1 min-w-[240px]">
-          <label class="block text-xs font-bold text-slate-700 mb-1">Selecciona el Agricultor a Actualizar:</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Selecciona el Aliados a Actualizar:</label>
           <select id="selectProveedorEditarPrecios" onchange="cargarProductosProveedorParaEdicion(this.value)" class="w-full h-11 bg-white border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
             <!-- Opciones dinámicas -->
           </select>
@@ -766,7 +811,7 @@
       <div class="text-center space-y-1">
         <span class="text-3xl">🌱</span>
         <h3 class="font-black text-lg text-slate-900">¿Quién está diligenciando hoy?</h3>
-        <p class="text-xs text-slate-500">Selecciona tu perfil de compras para ver tus agricultores asignados:</p>
+        <p class="text-xs text-slate-500">Selecciona tu perfil de compras para ver tus Aliados asignados:</p>
       </div>
 
       <div class="space-y-2.5 pt-2">
@@ -801,7 +846,7 @@
             <span class="w-10 h-10 rounded-xl bg-slate-800 text-white font-black text-base flex items-center justify-center">👑</span>
             <div>
               <p class="font-extrabold text-slate-900 text-sm">Gerencia / Administración</p>
-              <p class="text-[11px] text-slate-500">Supervisión general, todos los agricultores y buzón</p>
+              <p class="text-[11px] text-slate-500">Supervisión general, todos los Aliados y buzón</p>
             </div>
           </div>
           <span class="text-xs bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg">Entrar</span>
@@ -870,12 +915,13 @@
             Control de Corte Quincenal (Días 1 y 16)
           </span>
           <h3 class="font-black text-base sm:text-lg text-slate-900 leading-snug">
-            Actualización de Precios — Sra. María Claudia Márquez
+            Actualización de Precios — Carga de Excel
           </h3>
           <p class="text-xs text-slate-600 mt-0.5" id="lblSubtituloAlertaMC">
             Hoy es día de corte quincenal. Antes de generar pedidos, por favor asegúrate de actualizar la lista de precios o confirmar si continúas con las tarifas vigentes.
           </p>
         </div>
+        <button type="button" onclick="cerrarModalAlertaQuincenalMC()" class="text-slate-400 hover:text-slate-700 font-bold text-lg px-2 shrink-0" title="Cerrar">✕</button>
       </div>
 
       <!-- Opción 1: Subir Excel con actualización de precios -->
@@ -889,11 +935,11 @@
           </button>
         </div>
         <p class="text-[11px] text-slate-600 leading-relaxed">
-          Sube el archivo Excel (<code class="font-bold text-emerald-900">.xlsx</code> o <code class="font-bold text-emerald-900">.xls</code>) con las columnas <strong>Agricultor / Proveedor</strong>, <strong>Producto</strong> y <strong>Precio</strong> para actualizar automáticamente el catálogo:
+          Sube el archivo Excel (<code class="font-bold text-emerald-900">.xlsx</code>, <code class="font-bold text-emerald-900">.xls</code> o <code class="font-bold text-emerald-900">.csv</code>) con las columnas <strong>Factura:</strong>, <strong>Proveedor</strong>, <strong>Producto</strong>, <strong>Precios</strong>, <strong>U.M.</strong>, <strong>Negociador</strong>, <strong>Vigente</strong> y <strong>Nuevas condiciones Comerciales</strong> para actualizar automáticamente el catálogo:
         </p>
         <label class="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider cursor-pointer transition shadow-md">
           <span>📂</span> Seleccionar Archivo Excel de Precios
-          <input type="file" id="inputExcelPreciosMC" accept=".xlsx,.xls,.csv" onchange="subirExcelActualizacionPreciosMC(event)" class="hidden">
+          <input type="file" id="inputExcelPreciosMC" accept=".xlsx,.xls,.csv,.tsv" onchange="subirExcelActualizacionPreciosMC(event)" class="hidden">
         </label>
         <p id="lblResultadoExcelMC" class="text-xs font-bold text-emerald-800 hidden"></p>
       </div>
@@ -1198,7 +1244,7 @@
       <!-- Vista Previa Editable del Mensaje Formal -->
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
-          <label class="text-xs font-bold text-slate-700">📄 Mensaje Oficial que recibirá el Agricultor / Tercero:</label>
+          <label class="text-xs font-bold text-slate-700">📄 Mensaje Oficial que recibirá el Aliado / Tercero:</label>
           <button type="button" onclick="copiarTextoConfirmacionWhatsAppTercero()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1 rounded-lg">
             📋 Copiar Texto
           </button>
@@ -1265,7 +1311,7 @@
         <div class="flex items-center gap-3">
           <span class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-xl flex items-center justify-center shadow-md">📲</span>
           <div>
-            <h3 class="font-black text-base sm:text-lg text-slate-900">Confirmación Masiva a Agricultores por WhatsApp</h3>
+            <h3 class="font-black text-base sm:text-lg text-slate-900">Confirmación Masiva a Aliados por WhatsApp</h3>
             <p class="text-[11px] text-slate-500">Envía la orden formal con palabra <strong>CONFIRMO</strong> a cada proveedor del día</p>
           </div>
         </div>
@@ -1286,14 +1332,14 @@
             <input type="radio" name="destinoMasivoWA" value="prueba" id="radioMasivoPrueba" checked onchange="toggleModoMasivoWA()" class="mt-0.5 text-emerald-600">
             <div>
               <p class="font-extrabold text-slate-900">🧪 Enviar a mi propio número (Modo Prueba)</p>
-              <p class="text-[10px] text-slate-500">Todos los mensajes llegarán a tu WhatsApp para verificar antes de notificar a los agricultores.</p>
+              <p class="text-[10px] text-slate-500">Todos los mensajes llegarán a tu WhatsApp para verificar antes de notificar a los Aliados.</p>
             </div>
           </label>
 
           <label class="flex items-start gap-2 bg-white p-2.5 rounded-xl border border-amber-300 cursor-pointer">
             <input type="radio" name="destinoMasivoWA" value="oficial" id="radioMasivoOficial" onchange="toggleModoMasivoWA()" class="mt-0.5 text-emerald-600">
             <div>
-              <p class="font-extrabold text-slate-900">🚀 Enviar al teléfono de cada agricultor</p>
+              <p class="font-extrabold text-slate-900">🚀 Enviar al teléfono de cada Aliado</p>
               <p class="text-[10px] text-slate-500">Usa el número de contacto registrado en el catálogo para cada proveedor.</p>
             </div>
           </label>
@@ -1316,7 +1362,7 @@
       </div>
 
       <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
-        <p class="text-[11px] text-slate-500" id="lblResumenMasivoWA">0 agricultores listos para confirmar</p>
+        <p class="text-[11px] text-slate-500" id="lblResumenMasivoWA">0 Aliados listos para confirmar</p>
         <div class="flex items-center gap-2">
           <button type="button" onclick="cerrarModalConfirmarATodosWhatsApp()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs">
             Cerrar
@@ -1391,7 +1437,7 @@
               </select>
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1">🔍 Agricultor o Producto:</label>
+              <label class="block font-bold text-slate-700 mb-1">🔍 Aliados o Producto:</label>
               <input type="text" id="sqlFiltroTexto" oninput="renderizarTablaHistoricoSQL()" placeholder="Ej. Brócoli, Andrés..." class="w-full h-10 px-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900">
             </div>
           </div>
@@ -1426,7 +1472,7 @@
             <p id="sqlStatRegistros" class="text-lg font-black text-slate-900">0</p>
           </div>
           <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <p class="text-[10px] font-bold uppercase text-slate-500">Agricultores</p>
+            <p class="text-[10px] font-bold uppercase text-slate-500">Aliados</p>
             <p id="sqlStatProveedores" class="text-lg font-black text-slate-900">0</p>
           </div>
           <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3">
@@ -1490,7 +1536,7 @@
                   <th class="p-2.5">Fecha</th>
                   <th class="p-2.5">Perfil</th>
                   <th class="p-2.5">Hora</th>
-                  <th class="p-2.5">Agricultor</th>
+                  <th class="p-2.5">Aliados</th>
                   <th class="p-2.5">Producto</th>
                   <th class="p-2.5 text-right">Cantidad</th>
                   <th class="p-2.5 text-right">Precio Unit.</th>
@@ -1536,8 +1582,8 @@
         <p id="printTotalCajas" class="text-base font-black text-slate-900">0</p>
       </div>
       <div>
-        <p class="text-slate-500 font-semibold">Agricultores en Ruta:</p>
-        <p id="printTotalAgricultores" class="text-base font-black text-slate-900">0</p>
+        <p class="text-slate-500 font-semibold">Aliados en Ruta:</p>
+        <p id="printTotalAliados" class="text-base font-black text-slate-900">0</p>
       </div>
       <div>
         <p class="text-slate-500 font-semibold">Estado Auditoría:</p>
@@ -1550,7 +1596,7 @@
       <thead>
         <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-300 text-left">
           <th class="p-2 border border-slate-300">Hora</th>
-          <th class="p-2 border border-slate-300">Agricultor (Campo)</th>
+          <th class="p-2 border border-slate-300">Aliado (Campo)</th>
           <th class="p-2 border border-slate-300">Razón Social Factura</th>
           <th class="p-2 border border-slate-300">Producto</th>
           <th class="p-2 border border-slate-300 text-center">Cantidad</th>
@@ -1589,8 +1635,8 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
     }
   </script>
-  <script src="proveedores_datos.js?v=5.5"></script>
-  <script src="app.js?v=5.5"></script>
+  <script src="proveedores_datos.js?v=5.7"></script>
+  <script src="app.js?v=5.7"></script>
 
   <script>
     window.abrirModalCelular = function() { document.getElementById("modalCelular").classList.remove("hidden"); };
