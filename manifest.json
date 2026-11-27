@@ -1,12 +1,12 @@
 {
-  "name": "AgroGestión - Pedidos y Despachos",
-  "short_name": "AgroGestión",
-  "description": "Sistema de gestión de pedidos agrícolas, facturación y despachos",
+  "name": "Makand Pedidos",
+  "short_name": "Makand",
+  "description": "Pedidos a proveedores, precios y despachos de Makand. Cultivamos salud para ti.",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#059669",
+  "background_color": "#0e1f36",
+  "theme_color": "#0e1f36",
   "icons": [
     {
       "src": "icono.svg",

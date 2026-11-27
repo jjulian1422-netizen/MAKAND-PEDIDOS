@@ -11,20 +11,13 @@
   <link rel="icon" type="image/svg+xml" href="icono.svg">
   <link rel="apple-touch-icon" href="icono.svg">
   <title>Makand Pedidos - Abastecimiento y Despachos</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Paleta de marca Makand: azul-noche #0e1f36 (primario), verde-hoja #a3c83e (acento), crema #f0e4da (fondos), vino #a12c31.
-    // Se redefinen las paletas que usa la interfaz para que todo siga la marca sin tocar cada clase.
-    tailwind.config = { theme: { extend: { colors: {
-      emerald: { 50:'#f5f9e9', 100:'#e8f1cf', 200:'#d1e49e', 300:'#bad66e', 400:'#a3c83e', 500:'#a3c83e', 600:'#0e1f36', 700:'#1b3556', 800:'#0e1f36', 900:'#0a1628', 950:'#060f1d' },
-      slate:   { 50:'#faf6f2', 100:'#f3ece5', 200:'#e7ddd3', 300:'#d3c9bf', 400:'#868f9a', 500:'#6b7684', 600:'#4a5768', 700:'#34425a', 800:'#162339', 900:'#0e1f36', 950:'#091528' },
-      teal:    { 50:'#eef1f5', 100:'#dde3ec', 200:'#c3cbd8', 300:'#9eaabd', 400:'#6f7f98', 500:'#4a5f80', 600:'#3a4f72', 700:'#2f4363', 800:'#263654', 900:'#1b273d', 950:'#111a2a' },
-      indigo:  { 50:'#eef2f7', 100:'#dbe4f0', 200:'#b9c9e0', 300:'#8ea6c9', 400:'#5f7fb0', 500:'#3f629a', 600:'#2b4d85', 700:'#213f70', 800:'#1a325a', 900:'#142744', 950:'#0c1a2f' }
-    } } } };
-  </script>
+  <!-- Estilos Tailwind compilados y servidos desde la propia app (sin depender de un CDN externo) -->
+  <link rel="stylesheet" href="tailwind.css?v=6.3">
   <style>
     /* 🛡️ CRITICAL CSS Y PROTECCIÓN CONTRA CAÍDAS DE CDN EN MÓVIL (iOS / Android) */
+    /* Respaldo: tamaño del logo aunque los estilos tarden o fallen */
+    header img[alt="Makand"] { height: 22px; width: auto; max-width: 45vw; }
+    img { max-width: 100%; }
     .hidden { display: none !important; }
     [hidden] { display: none !important; }
 
@@ -154,6 +147,18 @@
       }
     }
 
+    /* ===== Móvil: letra legible y zonas táctiles de 44 px ===== */
+    @media (max-width: 639px) {
+      .text-\[9px\], .text-\[10px\] { font-size: 12px !important; }
+      .text-\[11px\] { font-size: 12.5px !important; }
+      .text-xs { font-size: 13px !important; line-height: 1.35 !important; }
+      button, select, summary, label.cursor-pointer, #inputFecha { min-height: 44px !important; }
+      #lblContainerFestivoHeader { white-space: nowrap; }
+      header button { min-width: 44px; justify-content: center; }
+      #gridTiempos:not(.mostrar-todo) > .extra-tiempos { display: none; }
+      #gridTiempos:not(.mostrar-todo) > :first-child { grid-column: span 2; }
+    }
+
     /* Estilos Oficiales para Impresión y PDF Corporativo */
     @media print {
       body {
@@ -187,7 +192,7 @@
         <div class="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           <img src="assets/makand-wordmark-positivo.svg" alt="Makand" class="h-5 sm:h-7 w-auto shrink-0">
           <span class="hidden sm:block w-px h-6 bg-slate-300 shrink-0"></span>
-          <div class="min-w-0">
+          <div class="min-w-0 hidden sm:block">
             <h1 class="text-xs sm:text-base font-semibold text-slate-900 leading-none whitespace-nowrap">Pedidos</h1>
             <p class="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden sm:block truncate">Abastecimiento, precios y despachos · Cultivamos salud para ti</p>
           </div>
@@ -197,12 +202,12 @@
         <div class="flex items-center gap-1 sm:gap-2 shrink-0">
           
           <!-- Botón Acceso Rápido a Gerencia -->
-          <button type="button" onclick="seleccionarPerfilUsuario('admin')" class="text-xs bg-white hover:bg-slate-100 text-slate-900 p-1.5 sm:px-3 sm:py-1.5 rounded-xl font-semibold transition flex items-center gap-1 sm:gap-1.5 border border-slate-300 active:scale-95" title="Panel de Gerencia / Administración">
+          <button type="button" onclick="seleccionarPerfilUsuario('admin')" class="max-sm:hidden text-xs bg-white hover:bg-slate-100 text-slate-900 p-1.5 sm:px-3 sm:py-1.5 rounded-xl font-semibold transition flex items-center gap-1 sm:gap-1.5 border border-slate-300 active:scale-95" title="Panel de Gerencia / Administración">
             <span>👑</span> <span class="hidden sm:inline">Gerencia</span>
           </button>
 
           <!-- Botón Actualización de Precios Excel / Corte 1 y 16 -->
-          <button type="button" id="btnAlertaQuincenalHeader" onclick="abrirModalAlertaQuincenalMC(true)" class="text-xs bg-gradient-to-b from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-xs active:scale-95 hidden" title="Subir Excel de Precios y Corte Quincenal (Días 1 y 16)">
+          <button type="button" id="btnAlertaQuincenalHeader" onclick="abrirModalAlertaQuincenalMC(true)" class="max-sm:hidden text-xs bg-gradient-to-b from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-black transition flex items-center gap-1 shadow-xs active:scale-95 hidden" title="Subir Excel de Precios y Corte Quincenal (Días 1 y 16)">
             <span>📥</span> <span class="hidden md:inline">Precios Excel</span>
           </button>
 
@@ -210,10 +215,10 @@
           <button type="button" onclick="abrirModalSeleccionPerfil()" class="flex items-center gap-1 sm:gap-2 bg-white hover:bg-emerald-50/70 border border-slate-200/90 hover:border-emerald-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl transition shadow-2xs active:scale-95" title="Cambiar negociador">
             <span class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-[11px] sm:text-xs flex items-center justify-center shadow-2xs shrink-0">👤</span>
             <div class="text-left min-w-0">
-              <p id="lblPerfilActivoNombre" class="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate max-w-[55px] sm:max-w-none">Elegir Perfil</p>
+              <p id="lblPerfilActivoNombre" class="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate max-w-[64px] sm:max-w-none">Elegir Perfil</p>
               <p id="lblPerfilActivoRol" class="text-[9px] sm:text-[10px] text-emerald-700 font-bold leading-tight mt-0.5 hidden sm:block">Toca para entrar</p>
             </div>
-            <span class="text-[10px] text-slate-400 font-bold ml-0.5">▾</span>
+            <span class="max-sm:hidden text-[10px] text-slate-400 font-bold ml-0.5">▾</span>
           </button>
 
           <!-- Botón Estado de Sincronización en la Nube Multidispositivo -->
@@ -222,7 +227,7 @@
           </button>
 
           <!-- Botón Seguridad y Contraseñas -->
-          <button type="button" onclick="abrirModalSeguridad()" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/90 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs active:scale-95" title="Seguridad, Contraseñas y Auditoría">
+          <button type="button" onclick="abrirModalSeguridad()" class="max-sm:hidden text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/90 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-2xs active:scale-95" title="Seguridad, Contraseñas y Auditoría">
             <span>🔒</span> <span class="hidden lg:inline">Seguridad</span>
           </button>
 
@@ -236,8 +241,11 @@
             <span>📦</span> <span class="hidden sm:inline">Buzón</span>
           </button>
 
+          <!-- Menú móvil: agrupa Gerencia, precios, histórico, buzón, seguridad y enlace -->
+          <button type="button" onclick="abrirMenuMovil()" class="sm:hidden text-base bg-white hover:bg-slate-100 text-slate-900 rounded-xl font-bold border border-slate-300 active:scale-95 flex items-center justify-center" aria-label="Más opciones" title="Más opciones">⋯</button>
+
           <!-- Botón Celular -->
-          <button type="button" onclick="abrirModalCelular()" class="hidden sm:inline-flex text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-bold transition items-center gap-1 shadow-xs active:scale-95" title="Enlace para Celular">
+          <button type="button" onclick="abrirModalCelular()" class="max-sm:hidden inline-flex text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-bold transition items-center gap-1 shadow-xs active:scale-95" title="Enlace para Celular">
             <span>📱</span>
           </button>
 
@@ -279,6 +287,21 @@
 
     </div>
   </header>
+
+  <!-- MENÚ MÓVIL (hoja inferior) -->
+  <div id="menuMovil" class="fixed inset-0 z-50 hidden no-print" role="dialog" aria-label="Menú">
+    <div class="absolute inset-0 bg-slate-950/60" onclick="cerrarMenuMovil()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-4 pb-8 space-y-1 shadow-2xl">
+      <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-2"></div>
+      <button type="button" onclick="menuMovilIr(function(){ seleccionarPerfilUsuario('admin'); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900"><span class="w-6 text-center">👑</span> Gerencia</button>
+      <button type="button" id="menuItemPrecios" onclick="menuMovilIr(function(){ abrirModalAlertaQuincenalMC(true); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900 hidden"><span class="w-6 text-center">📥</span> Actualizar precios (Excel)</button>
+      <button type="button" id="menuItemHistorico" onclick="menuMovilIr(function(){ abrirModalHistoricoSQL(); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900 hidden"><span class="w-6 text-center">🗂️</span> Histórico de pedidos</button>
+      <button type="button" id="menuItemBuzon" onclick="menuMovilIr(function(){ abrirModalBuzon(); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900 hidden"><span class="w-6 text-center">📦</span> Buzón de entregas</button>
+      <button type="button" onclick="menuMovilIr(function(){ abrirModalSeguridad(); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900"><span class="w-6 text-center">🔒</span> Seguridad y contraseñas</button>
+      <button type="button" onclick="menuMovilIr(function(){ abrirModalCelular(); })" class="w-full flex items-center gap-3 text-left px-3 py-3 rounded-xl hover:bg-slate-100 text-sm font-semibold text-slate-900"><span class="w-6 text-center">📱</span> Enlace para el celular</button>
+      <button type="button" onclick="cerrarMenuMovil()" class="w-full mt-2 px-3 py-3 rounded-xl bg-slate-100 text-sm font-semibold text-slate-700">Cerrar</button>
+    </div>
+  </div>
 
   <!-- CONTENIDO PRINCIPAL -->
   <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 w-full flex-1 space-y-4 pb-24 lg:pb-10 no-print">
@@ -467,7 +490,7 @@
               </span>
             </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div id="gridTiempos" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <!-- Hora Planta con Edición -->
               <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
                 <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🏢 Llegada Planta:</span>
@@ -483,26 +506,27 @@
               </div>
 
               <!-- Hora Campo / Adelantos -->
-              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+              <div class="extra-tiempos bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
                 <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🚜 Salida Campo:</span>
                 <p id="lblHoraCampo" class="font-black text-xs text-slate-800 mt-1">Directo</p>
                 <span class="text-[9px] text-slate-400 mt-0.5">Recogida finca</span>
               </div>
 
               <!-- Tiempo Finca -->
-              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+              <div class="extra-tiempos bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
                 <span class="block text-[10px] font-extrabold text-slate-500 uppercase">⏱️ Tiempo Finca:</span>
                 <p id="lblTiempoFinca" class="font-black text-xs text-slate-800 mt-1">30 min</p>
                 <span class="text-[9px] text-slate-400 mt-0.5">Cargue estimado</span>
               </div>
 
               <!-- Responsable Transporte -->
-              <div class="bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
+              <div class="extra-tiempos bg-white p-2.5 rounded-xl border border-blue-200/80 shadow-2xs flex flex-col justify-between">
                 <span class="block text-[10px] font-extrabold text-slate-500 uppercase">🚚 Transporte:</span>
                 <p id="lblTransporte" class="font-black text-xs text-blue-800 mt-1">TERCERO</p>
                 <span class="text-[9px] text-slate-400 mt-0.5">Responsable flete</span>
               </div>
             </div>
+            <button type="button" onclick="var g=document.getElementById('gridTiempos'); g.classList.toggle('mostrar-todo'); this.textContent = g.classList.contains('mostrar-todo') ? 'Ocultar ruta ▴' : 'Ver ruta y transporte ▾';" class="sm:hidden w-full text-xs font-semibold text-slate-600 py-1">Ver ruta y transporte ▾</button>
           </div>
 
           <!-- CHECKLIST DE PRODUCTOS PACTADOS -->
@@ -1606,15 +1630,35 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-  <script src="config-supabase.js?v=6.1"></script>
-  <script src="proveedores_datos.js?v=6.1"></script>
-  <script src="app.js?v=6.1"></script>
-  <script src="nube-supabase.js?v=6.1"></script>
+  <script src="supabase.min.js?v=6.3"></script>
+  <script src="config-supabase.js?v=6.3"></script>
+  <script src="proveedores_datos.js?v=6.3"></script>
+  <script src="app.js?v=6.3"></script>
+  <script src="nube-supabase.js?v=6.3"></script>
 
   <script>
     window.abrirModalCelular = function() { document.getElementById("modalCelular").classList.remove("hidden"); };
     window.cerrarModalCelular = function() { document.getElementById("modalCelular").classList.add("hidden"); };
+
+    // Menú móvil
+    window.abrirMenuMovil = function() {
+      var admin = (typeof estado !== "undefined") && estado.perfilActivo === "admin";
+      var logueado = (typeof estado !== "undefined") && Boolean(estado.perfilActivo);
+      [["menuItemPrecios", logueado], ["menuItemHistorico", admin], ["menuItemBuzon", admin]].forEach(function(p) {
+        var e = document.getElementById(p[0]); if (e) e.classList.toggle("hidden", !p[1]);
+      });
+      document.getElementById("menuMovil").classList.remove("hidden");
+    };
+    window.cerrarMenuMovil = function() { document.getElementById("menuMovil").classList.add("hidden"); };
+    window.menuMovilIr = function(fn) { cerrarMenuMovil(); fn(); };
+
+    // En el celular, el portafolio de productos empieza plegado para ver antes lo importante
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.innerWidth < 640) {
+        var s = document.getElementById("contenedorSemaforo"), i = document.getElementById("lblIconoSemaforo");
+        if (s) { s.classList.add("hidden"); if (i) i.innerText = "▼"; }
+      }
+    });
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

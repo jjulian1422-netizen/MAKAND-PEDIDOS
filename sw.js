@@ -1,12 +1,14 @@
 // Service Worker de Makand Pedidos - Estrategia Network-First con Fallback Seguro
-const CACHE_NAME = "makand-v6.1";
+const CACHE_NAME = "makand-v6.3";
 const ARCHIVOS_A_GUARDAR = [
   "./",
   "./index.html",
-  "./app.js?v=6.1",
-  "./proveedores_datos.js?v=6.1",
-  "./config-supabase.js?v=6.1",
-  "./nube-supabase.js?v=6.1",
+  "./app.js?v=6.3",
+  "./proveedores_datos.js?v=6.3",
+  "./config-supabase.js?v=6.3",
+  "./nube-supabase.js?v=6.3",
+  "./tailwind.css?v=6.3",
+  "./supabase.min.js?v=6.3",
   "./xlsx.full.min.js",
   "./manifest.json",
   "./icono.svg",
