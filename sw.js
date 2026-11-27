@@ -1,13 +1,17 @@
-// Service Worker para AgroGestión - Estrategia Network-First con Fallback Seguro
-const CACHE_NAME = "agrogestion-v5.7";
+// Service Worker de Makand Pedidos - Estrategia Network-First con Fallback Seguro
+const CACHE_NAME = "makand-v6.0";
 const ARCHIVOS_A_GUARDAR = [
   "./",
   "./index.html",
-  "./app.js?v=5.7",
-  "./proveedores_datos.js?v=5.7",
+  "./app.js?v=6.0",
+  "./proveedores_datos.js?v=6.0",
+  "./config-supabase.js?v=6.0",
+  "./nube-supabase.js?v=6.0",
   "./xlsx.full.min.js",
   "./manifest.json",
-  "./icono.svg"
+  "./icono.svg",
+  "./assets/makand-wordmark-positivo.svg",
+  "./assets/makand-logo-positivo.svg"
 ];
 
 self.addEventListener("install", (e) => {
@@ -37,6 +41,8 @@ self.addEventListener("activate", (e) => {
 // NUNCA devolver HTML como fallback para scripts (.js) ni hojas de estilo (.css)
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // No interceptar ni cachear la API de Supabase (datos y sesiones privados)
+  if (new URL(e.request.url).hostname.endsWith("supabase.co")) return;
 
   e.respondWith(
     fetch(e.request)
