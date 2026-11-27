@@ -1,5 +1,14 @@
-// AgroGestión Pro - Lógica Maestra
+// Makand Pedidos - Lógica Maestra
 // Incluye: Filtro por Producto (Proveedores Disponibles), Perfiles Separados, Horarios, Facturación, 2 Plantillas Excel y WhatsApp
+
+// Escapa texto para insertarlo en HTML (contenido y atributos). Anti-XSS.
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+// Argumento string seguro para handlers inline: onclick="fn(${jsArg(x)})"
+function jsArg(v) {
+  return esc(JSON.stringify(String(v ?? "")));
+}
 
 const PERFILES = {
   "camilo": {
@@ -545,34 +554,32 @@ function configurarEventos() {
         // Detectar si el usuario escribió el nombre de un producto en el buscador (ej. "brocoli" o "coliflor")
         const prodBuscado = prodsProv.find(pr => pr.producto.toLowerCase().includes(texto));
         const prodPorDefecto = prodBuscado ? prodBuscado.producto : (prodsProv[0] ? prodsProv[0].producto : "");
-        const prodEscapado = prodPorDefecto.replace(/'/g, "\\'");
 
         const botonesProductos = prodsProv.map(pr => {
-          const pEsc = pr.producto.replace(/'/g, "\\'");
           const coincideTexto = texto && pr.producto.toLowerCase().includes(texto);
           const precioMostrar = calcularPrecioVigenteProducto(pr, p);
           const tieneRecargoActivo = obtenerRecargoFestivoProducto(pr, p) > 0 && aplicaTarifaDomingoOFestivo();
           return `
             <button 
               type="button" 
-              onclick="event.stopPropagation(); seleccionarProveedor('${p.id}', '${pEsc}')" 
+              onclick="event.stopPropagation(); seleccionarProveedor(${jsArg(p.id)}, ${jsArg(pr.producto)})"
               class="text-[11px] ${coincideTexto ? 'bg-emerald-600 text-white ring-2 ring-emerald-300' : 'bg-emerald-50 hover:bg-emerald-600 text-emerald-900 hover:text-white border border-emerald-300'} px-2.5 py-1 rounded-xl font-black transition flex items-center gap-1 shadow-2xs"
             >
-              <span>🛒</span> ${pr.producto} ${precioMostrar > 0 ? `($ ${fmtMiles(precioMostrar)}${tieneRecargoActivo ? ' 🎉' : ''})` : ''}
+              <span>🛒</span> ${esc(pr.producto)} ${precioMostrar > 0 ? `($ ${fmtMiles(precioMostrar)}${tieneRecargoActivo ? ' 🎉' : ''})` : ''}
             </button>
           `;
         }).join("");
 
         return `
-          <li class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5" onclick="seleccionarProveedor('${p.id}', '${prodEscapado}')">
+          <li class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5" onclick="seleccionarProveedor(${jsArg(p.id)}, ${jsArg(prodPorDefecto)})">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-bold text-slate-900 text-sm">${p.nombreComun}</span>
+                <span class="font-bold text-slate-900 text-sm">${esc(p.nombreComun)}</span>
                 ${asignadoAMi ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Tu Aliado</span>` : ''}
-                ${entregaHoy ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Entrega Hoy</span>` : `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">Días: ${p.diasEntrega.join(", ")}</span>`}
+                ${entregaHoy ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Entrega Hoy</span>` : `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">Días: ${esc(p.diasEntrega.join(", "))}</span>`}
               </div>
-              <p class="text-xs text-slate-600 font-medium">Factura a: <strong class="text-slate-800">${p.razonSocialFactura}</strong></p>
-              <p class="text-[11px] text-slate-500">⏰ Hora Planta: <strong>${p.horaPlanta || "N/A"}</strong> | 🚚 ${p.responsableTransporte}</p>
+              <p class="text-xs text-slate-600 font-medium">Factura a: <strong class="text-slate-800">${esc(p.razonSocialFactura)}</strong></p>
+              <p class="text-[11px] text-slate-500">⏰ Hora Planta: <strong>${esc(p.horaPlanta || "N/A")}</strong> | 🚚 ${esc(p.responsableTransporte)}</p>
             </div>
             <div class="flex flex-wrap items-center gap-1.5">
               ${botonesProductos || `<span class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-bold">Seleccionar</span>`}
@@ -582,7 +589,7 @@ function configurarEventos() {
       }).join("");
       listaSugerencias.classList.remove("hidden");
     } else {
-      listaSugerencias.innerHTML = `<li class="p-3 text-xs text-slate-500 italic">No se encontraron coincidencias para '${texto}'.</li>`;
+      listaSugerencias.innerHTML = `<li class="p-3 text-xs text-slate-500 italic">No se encontraron coincidencias para '${esc(texto)}'.</li>`;
       listaSugerencias.classList.remove("hidden");
     }
   });
@@ -641,7 +648,7 @@ function renderizarSelectFiltroProductos() {
 
   select.innerHTML = `
     <option value="">-- O busca directamente por Producto (${prods.length} de ${PERFILES[estado.perfilActivo].nombre}) --</option>
-    ${prods.map(p => `<option value="${p}">${p}</option>`).join("")}
+    ${prods.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("")}
   `;
 }
 
@@ -716,7 +723,7 @@ window.filtrarPorProducto = function(nombreProd) {
   if (proveedoresDisponibles.length === 0) {
     contenedor.innerHTML = `
       <div class="col-span-full text-center py-6 text-slate-400 bg-slate-50 rounded-xl">
-        <p class="text-xs font-bold text-slate-600">No hay Aliadoes de ${PERFILES[estado.perfilActivo].nombre} registrados con "${nombreProd}".</p>
+        <p class="text-xs font-bold text-slate-600">No hay Aliadoes de ${PERFILES[estado.perfilActivo].nombre} registrados con "${esc(nombreProd)}".</p>
       </div>
     `;
   } else {
@@ -726,13 +733,13 @@ window.filtrarPorProducto = function(nombreProd) {
         <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
           <div>
             <div class="flex items-center gap-1.5">
-              <span class="font-extrabold text-slate-900 text-sm">${item.nombreComun}</span>
-              ${item.entregaHoy ? 
+              <span class="font-extrabold text-slate-900 text-sm">${esc(item.nombreComun)}</span>
+              ${item.entregaHoy ?
                 `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">ENTREGA HOY (${diaActual})</span>` : 
-                `<span class="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">Días: ${item.diasEntrega.join(", ")}</span>`
+                `<span class="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">Días: ${esc(item.diasEntrega.join(", "))}</span>`
               }
             </div>
-            <p class="text-[11px] text-slate-500 font-medium">Factura a: <strong class="text-slate-800">${item.razonSocialFactura}</strong></p>
+            <p class="text-[11px] text-slate-500 font-medium">Factura a: <strong class="text-slate-800">${esc(item.razonSocialFactura)}</strong></p>
           </div>
           
           <div class="text-right">
@@ -742,18 +749,18 @@ window.filtrarPorProducto = function(nombreProd) {
             ${item.recargoFestivo > 0 && aplicaTarifaDomingoOFestivo() ? `
               <p class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded inline-block">Incluye +$${fmtMiles(item.recargoFestivo)} Dom/Festivo</p>
             ` : ''}
-            <p class="text-[10px] text-slate-400">por ${item.unidadMedida}</p>
+            <p class="text-[10px] text-slate-400">por ${esc(item.unidadMedida)}</p>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
           <div>
-            <span>⏰ Planta: <strong>${item.horaPlanta}</strong></span> | 
-            <span>🚚 ${item.responsableTransporte}</span>
-            ${item.notas ? `<p class="text-[10px] text-amber-800 font-medium mt-0.5">📝 ${item.notas}</p>` : ''}
+            <span>⏰ Planta: <strong>${esc(item.horaPlanta)}</strong></span> |
+            <span>🚚 ${esc(item.responsableTransporte)}</span>
+            ${item.notas ? `<p class="text-[10px] text-amber-800 font-medium mt-0.5">📝 ${esc(item.notas)}</p>` : ''}
           </div>
 
-          <button type="button" onclick="seleccionarProveedorParaProducto('${item.proveedorId}', '${item.productoNombre}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-2xs flex items-center gap-1">
+          <button type="button" onclick="seleccionarProveedorParaProducto(${jsArg(item.proveedorId)}, ${jsArg(item.productoNombre)})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-2xs flex items-center gap-1">
             <span>🛒</span> Pedir a este Aliado
           </button>
         </div>
@@ -831,14 +838,14 @@ function renderizarSemaforoCobertura() {
     if (pedido) {
       pedidosCount++;
       return `
-        <span onclick="filtrarPorProducto('${nombreProd}')" class="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full shadow-2xs cursor-pointer hover:bg-emerald-200 transition active:scale-95" title="Clic para ver proveedores de ${nombreProd}">
-          <span>✅</span> ${nombreProd}
+        <span onclick="filtrarPorProducto(${jsArg(nombreProd)})" class="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full shadow-2xs cursor-pointer hover:bg-emerald-200 transition active:scale-95" title="Clic para ver proveedores de ${esc(nombreProd)}">
+          <span>✅</span> ${esc(nombreProd)}
         </span>
       `;
     } else {
       return `
-        <span onclick="filtrarPorProducto('${nombreProd}')" class="inline-flex items-center gap-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full cursor-pointer hover:bg-rose-100 transition active:scale-95" title="Clic para buscar Aliadoes de ${nombreProd}">
-          <span>⭕</span> ${nombreProd}
+        <span onclick="filtrarPorProducto(${jsArg(nombreProd)})" class="inline-flex items-center gap-1 text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full cursor-pointer hover:bg-rose-100 transition active:scale-95" title="Clic para buscar Aliadoes de ${esc(nombreProd)}">
+          <span>⭕</span> ${esc(nombreProd)}
         </span>
       `;
     }
@@ -881,10 +888,10 @@ function renderizarListaProveedoresSugeridos() {
   }
 
   contenedor.innerHTML = AliadoesFiltrados.map(p => `
-    <button type="button" onclick="seleccionarProveedor('${p.id}')" class="text-xs bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-950 border border-slate-200 hover:border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs">
-      <span class="text-emerald-700">⏰ ${p.horaPlanta}</span>
-      <span>${p.nombreComun}</span>
-      <span class="text-[10px] text-slate-400 font-normal">(${p.productos.map(pr => pr.producto).join(", ")})</span>
+    <button type="button" onclick="seleccionarProveedor(${jsArg(p.id)})" class="text-xs bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-950 border border-slate-200 hover:border-emerald-300 px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-2xs">
+      <span class="text-emerald-700">⏰ ${esc(p.horaPlanta)}</span>
+      <span>${esc(p.nombreComun)}</span>
+      <span class="text-[10px] text-slate-400 font-normal">(${esc(p.productos.map(pr => pr.producto).join(", "))})</span>
     </button>
   `).join("");
 }
@@ -1397,7 +1404,7 @@ function renderizarFilasProductos() {
             <span class="w-6 h-6 ${fila.esFraccionada ? 'bg-indigo-600' : (cantNum > 0 ? 'bg-emerald-600 shadow-xs shadow-emerald-600/30' : 'bg-slate-400')} text-white rounded-lg flex items-center justify-center text-xs font-black transition">${idx + 1}</span>
             <input 
               type="text" 
-              value="${fila.producto}" 
+              value="${esc(fila.producto)}" 
               placeholder="Nombre del producto..."
               oninput="actualizarValorFila(${idx}, 'producto', this.value)"
               class="font-black text-slate-900 text-sm bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 outline-none"
@@ -1405,7 +1412,7 @@ function renderizarFilasProductos() {
             ${estadoVigencia}
             ${tieneRepartoMultiple ? `
               <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded-full">
-                🔀 Total ${fila.producto}: ${sumaPorProducto[keyProd].toLocaleString('es-CO')} ${fila.unidad}
+                🔀 Total ${esc(fila.producto)}: ${sumaPorProducto[keyProd].toLocaleString('es-CO')} ${esc(fila.unidad)}
               </span>
             ` : ''}
           </div>
@@ -1423,7 +1430,7 @@ function renderizarFilasProductos() {
                 oninput="actualizarPrecioFila(${idx}, this.value, this)"
                 class="w-24 font-black ${precioNum <= 0 ? 'text-rose-700 bg-rose-50 border-rose-300' : 'text-emerald-800 bg-emerald-50/60 border-emerald-200'} text-xs px-1.5 py-0.5 rounded border focus:ring-2 focus:ring-emerald-500 outline-none text-right tabular-nums"
               >
-              <span class="text-[10px] font-bold text-slate-500">/ ${fila.unidad} ✏️</span>
+              <span class="text-[10px] font-bold text-slate-500">/ ${esc(fila.unidad)} ✏️</span>
             </div>
 
             <!-- 🔀 ITEM 4: BOTÓN PARA REPARTIR PRODUCTO EN OTRO CLIENTE (EJ. 450 PLANTA + 50 ALKOSTO) -->
@@ -1444,7 +1451,7 @@ function renderizarFilasProductos() {
 
         ${fila.notasComerciales ? `
           <div class="text-[11px] bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-xl font-medium">
-            📝 <strong>Condición:</strong> ${fila.notasComerciales} | ${fila.condicion || ''}
+            📝 <strong>Condición:</strong> ${esc(fila.notasComerciales)} | ${esc(fila.condicion || '')}
           </div>
         ` : ''}
 
@@ -1547,7 +1554,7 @@ function renderizarFilasProductos() {
               onchange="actualizarValorFila(${idx}, 'unidad', this.value)"
               class="w-full h-11 px-2 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none text-xs cursor-pointer shadow-2xs"
             >
-              ${UNIDADES_CATALOGO.map(u => `<option value="${u}" ${fila.unidad === u ? 'selected' : ''}>${u}</option>`).join("")}
+              ${UNIDADES_CATALOGO.map(u => `<option value="${esc(u)}" ${fila.unidad === u ? 'selected' : ''}>${esc(u)}</option>`).join("")}
             </select>
           </div>
 
@@ -1557,7 +1564,7 @@ function renderizarFilasProductos() {
               onchange="actualizarValorFila(${idx}, 'clienteDestino', this.value)"
               class="w-full h-11 px-2 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none text-xs cursor-pointer shadow-2xs"
             >
-              ${CLIENTES_CATALOGO.map(c => `<option value="${c}" ${fila.clienteDestino === c ? 'selected' : ''}>${c}</option>`).join("")}
+              ${CLIENTES_CATALOGO.map(c => `<option value="${esc(c)}" ${fila.clienteDestino === c ? 'selected' : ''}>${esc(c)}</option>`).join("")}
             </select>
           </div>
 
@@ -1565,7 +1572,7 @@ function renderizarFilasProductos() {
             <label class="block font-semibold text-slate-600 mb-1">Presentación / Obs.</label>
             <input 
               type="text" 
-              value="${fila.observaciones}" 
+              value="${esc(fila.observaciones)}" 
               placeholder="Observaciones opcionales..."
               oninput="actualizarValorFila(${idx}, 'observaciones', this.value)"
               class="w-full h-11 px-3 py-2 rounded-xl border border-slate-300 bg-white font-normal text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none text-xs shadow-2xs"
@@ -1586,13 +1593,12 @@ function renderizarFilasProductos() {
 
     if (otrosProductos.length > 0) {
       const botonesOtros = otrosProductos.map(pr => {
-        const pEsc = pr.producto.replace(/'/g, "\\'");
         return `
           <div class="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
-            <button type="button" onclick="seleccionarOtroProductoDelMismoProveedor('${pEsc}', 'cambiar')" class="text-[11px] font-bold text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1 rounded-lg transition" title="Cambiar formulario solo a ${pr.producto}">
-              🔄 Cambiar a <strong>${pr.producto}</strong>
+            <button type="button" onclick="seleccionarOtroProductoDelMismoProveedor(${jsArg(pr.producto)}, 'cambiar')" class="text-[11px] font-bold text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1 rounded-lg transition" title="Cambiar formulario solo a ${esc(pr.producto)}">
+              🔄 Cambiar a <strong>${esc(pr.producto)}</strong>
             </button>
-            <button type="button" onclick="seleccionarOtroProductoDelMismoProveedor('${pEsc}', 'agregar')" class="text-[11px] font-black text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 px-2 py-1 rounded-lg transition" title="Agregar también ${pr.producto} a este mismo pedido">
+            <button type="button" onclick="seleccionarOtroProductoDelMismoProveedor(${jsArg(pr.producto)}, 'agregar')" class="text-[11px] font-black text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 px-2 py-1 rounded-lg transition" title="Agregar también ${esc(pr.producto)} a este mismo pedido">
               ➕ Agregar
             </button>
           </div>
@@ -1601,7 +1607,7 @@ function renderizarFilasProductos() {
 
       contenedor.innerHTML += `
         <div class="bg-slate-50/90 border border-dashed border-slate-300 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span class="text-[11px] font-bold text-slate-500">📌 Otros productos de <strong>${estado.proveedorSeleccionado.nombreComun}</strong> (no incluidos en este pedido):</span>
+          <span class="text-[11px] font-bold text-slate-500">📌 Otros productos de <strong>${esc(estado.proveedorSeleccionado.nombreComun)}</strong> (no incluidos en este pedido):</span>
           <div class="flex flex-wrap items-center gap-1.5">${botonesOtros}</div>
         </div>
       `;
@@ -1680,7 +1686,7 @@ window.guardarPedidoCompletoProveedor = function() {
   const inputHoraPlanta = document.getElementById("inputHoraPlantaLlegada");
   const horaPlantaConfirmada = (inputHoraPlanta && inputHoraPlanta.value) ? inputHoraPlanta.value : (p.horaPlanta || "11:00");
 
-  const hayAlertaPreciosSinActualizar = localStorage.getItem("agri_alerta_precios_sin_actualizar_" + estado.fecha) === "true";
+  const hayAlertaPreciosSinActualizar = localStorage.getItem("agri_alerta_precios_sin_actualizar_" + obtenerClaveCorteQuincenal(estado.fecha)) === "true";
 
   const nuevoRegistro = {
     id: "ped-" + Date.now(),
@@ -1873,24 +1879,24 @@ function renderizarBuzonEntregas() {
             ${ent.usuarioNombre.charAt(0)}
           </span>
           <div>
-            <h4 class="font-extrabold text-sm text-slate-900">${ent.usuarioNombre}</h4>
-            <p class="text-[11px] text-slate-500 font-medium">🕒 Radicado a las: <strong>${ent.horaEnvio}</strong></p>
+            <h4 class="font-extrabold text-sm text-slate-900">${esc(ent.usuarioNombre)}</h4>
+            <p class="text-[11px] text-slate-500 font-medium">🕒 Radicado a las: <strong>${esc(ent.horaEnvio)}</strong></p>
           </div>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-lg">
-            ${ent.totalAliadoes} Aliadoes | ${ent.totalItems} productos
+            ${esc(ent.totalAliadoes)} Aliadoes | ${esc(ent.totalItems)} productos
           </span>
-          <button type="button" onclick="descargarExcelEntregaIndividual('${ent.id}')" class="text-xs bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded-lg transition">
+          <button type="button" onclick="descargarExcelEntregaIndividual(${jsArg(ent.id)})" class="text-xs bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded-lg transition">
             📥 Descargar Excel
           </button>
         </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl">
-        <p>📦 Total Cajas: <strong>${ent.totalCajas.toLocaleString('es-CO')}</strong></p>
-        <p>💰 Total Compra: <strong class="text-emerald-700">$ ${ent.totalValor.toLocaleString('es-CO')}</strong></p>
-        <p class="text-slate-500 text-right">ID: <code class="text-[10px]">${ent.id.substr(0, 10)}</code></p>
+        <p>📦 Total Cajas: <strong>${esc(ent.totalCajas.toLocaleString('es-CO'))}</strong></p>
+        <p>💰 Total Compra: <strong class="text-emerald-700">$ ${esc(ent.totalValor.toLocaleString('es-CO'))}</strong></p>
+        <p class="text-slate-500 text-right">ID: <code class="text-[10px]">${esc(ent.id.substr(0, 10))}</code></p>
       </div>
     </div>
   `).join("");
@@ -1925,7 +1931,7 @@ window.descargarExcelEntregaIndividual = function(idEntrega) {
   const libro = XLSX.utils.book_new();
   const hoja = XLSX.utils.json_to_sheet(filas);
   XLSX.utils.book_append_sheet(libro, hoja, `Entrega ${entrega.usuarioNombre}`);
-  XLSX.writeFile(libro, `Entrega_${entrega.usuarioId}_${entrega.fecha}.xlsx`);
+  XLSX.writeFile(libro, `Makand_Entrega_${entrega.usuarioId}_${entrega.fecha}.xlsx`);
   mostrarToast(`📗 Descargado lote de ${entrega.usuarioNombre}`);
 };
 
@@ -1990,7 +1996,7 @@ function renderizarPedidosDelDia() {
           <span class="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-full border tabular-nums ${
             esAlkosto ? 'bg-indigo-50 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-800 border-slate-300'
           }">
-            <span>🎯 ${d}:</span>
+            <span>🎯 ${esc(d)}:</span>
             <strong>${fmtMiles(info.unidades)} u.</strong>
             <span class="text-emerald-700">($ ${fmtMiles(info.valor)})</span>
           </span>
@@ -2040,16 +2046,16 @@ function renderizarPedidosDelDia() {
       <div class="bg-gradient-to-r from-slate-50 via-white to-slate-50/70 p-3.5 sm:p-4 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2.5">
         <div>
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="bg-slate-900 text-emerald-400 font-black text-xs px-2.5 py-1 rounded-lg shadow-2xs tabular-nums">⏰ ${ped.proveedor.horaPlanta}</span>
-            <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight">${ped.proveedor.nombreComun}</span>
-            <span class="text-xs text-slate-500 font-medium">(Factura: <strong class="text-slate-800">${ped.proveedor.razonSocialFactura}</strong>)</span>
-            <span class="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full">🚚 ${ped.proveedor.responsableTransporte}</span>
+            <span class="bg-slate-900 text-emerald-400 font-black text-xs px-2.5 py-1 rounded-lg shadow-2xs tabular-nums">⏰ ${esc(ped.proveedor.horaPlanta)}</span>
+            <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight">${esc(ped.proveedor.nombreComun)}</span>
+            <span class="text-xs text-slate-500 font-medium">(Factura: <strong class="text-slate-800">${esc(ped.proveedor.razonSocialFactura)}</strong>)</span>
+            <span class="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full">🚚 ${esc(ped.proveedor.responsableTransporte)}</span>
             <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-black px-2.5 py-0.5 rounded-full tabular-nums">💰 $ ${fmtMiles(totalPedidoCard)}</span>
           </div>
           <div class="text-[11px] text-slate-500 mt-1 flex gap-2.5 sm:gap-3.5 flex-wrap items-center">
-            <span>📍 ${ped.proveedor.ubicacion || "Finca"}</span>
-            ${ped.proveedor.contacto ? `<span class="font-medium text-slate-600">📞 ${ped.proveedor.contacto}</span>` : ''}
-            <span class="text-emerald-700 font-bold bg-emerald-50/80 px-2 py-0.5 rounded-md border border-emerald-200/60">👤 ${ped.usuarioNombre}</span>
+            <span>📍 ${esc(ped.proveedor.ubicacion || "Finca")}</span>
+            ${ped.proveedor.contacto ? `<span class="font-medium text-slate-600">📞 ${esc(ped.proveedor.contacto)}</span>` : ''}
+            <span class="text-emerald-700 font-bold bg-emerald-50/80 px-2 py-0.5 rounded-md border border-emerald-200/60">👤 ${esc(ped.usuarioNombre)}</span>
             ${ped.alertaPreciosSinActualizar ? `
               <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs animate-pulse">
                 <span>⚠️</span> <span>Precios sin actualizar (Pactado corte anterior)</span>
@@ -2058,13 +2064,13 @@ function renderizarPedidosDelDia() {
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-1 sm:gap-1.5 shrink-0">
-          <button type="button" onclick="editarRegistroPedido('${ped.id}')" class="text-xs text-indigo-800 hover:text-indigo-950 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 sm:px-3 py-1.5 rounded-xl font-black transition active:scale-95 flex items-center gap-1 shadow-2xs" title="Corregir cantidades, precios, hora o destinos de este pedido">
+          <button type="button" onclick="editarRegistroPedido(${jsArg(ped.id)})" class="text-xs text-indigo-800 hover:text-indigo-950 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 sm:px-3 py-1.5 rounded-xl font-black transition active:scale-95 flex items-center gap-1 shadow-2xs" title="Corregir cantidades, precios, hora o destinos de este pedido">
             <span>✏️</span> <span class="hidden sm:inline">Corregir / </span><span>Editar</span>
           </button>
-          <button type="button" onclick="abrirModalConfirmacionWhatsAppPedido('${ped.id}')" class="text-xs text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 sm:px-3 py-1.5 rounded-xl font-black transition active:scale-95 flex items-center gap-1 shadow-2xs" title="Confirmar pedido por WhatsApp con el proveedor o probar en mi WhatsApp">
+          <button type="button" onclick="abrirModalConfirmacionWhatsAppPedido(${jsArg(ped.id)})" class="text-xs text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 sm:px-3 py-1.5 rounded-xl font-black transition active:scale-95 flex items-center gap-1 shadow-2xs" title="Confirmar pedido por WhatsApp con el proveedor o probar en mi WhatsApp">
             <span>📲</span> <span class="hidden sm:inline">Confirmar </span><span>WhatsApp</span>
           </button>
-          <button type="button" onclick="eliminarRegistroPedido('${ped.id}')" class="text-xs text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 sm:px-2.5 py-1.5 rounded-xl font-bold transition active:scale-95" title="Eliminar este pedido">
+          <button type="button" onclick="eliminarRegistroPedido(${jsArg(ped.id)})" class="text-xs text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 sm:px-2.5 py-1.5 rounded-xl font-bold transition active:scale-95" title="Eliminar este pedido">
             🗑️
           </button>
         </div>
@@ -2076,24 +2082,24 @@ function renderizarPedidosDelDia() {
           <div class="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-2xs">
             <div class="space-y-1">
               <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="font-black text-slate-900 text-xs">${it.producto}${it.modalidadBrocoli ? ` (${it.modalidadBrocoli})` : ''}</span>
+                <span class="font-black text-slate-900 text-xs">${esc(it.producto)}${it.modalidadBrocoli ? ` (${esc(it.modalidadBrocoli)})` : ''}</span>
                 <span class="px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
                   it.clienteDestino.includes("Alkosto") ? "bg-indigo-100 text-indigo-900 border border-indigo-300" :
                   it.clienteDestino.includes("Ara") ? "bg-amber-100 text-amber-800 border border-amber-300" :
                   "bg-slate-200/80 text-slate-700"
-                }">${it.clienteDestino}</span>
+                }">${esc(it.clienteDestino)}</span>
               </div>
               <p class="text-[11px] text-slate-500 tabular-nums">
-                ${it.precioUnitario > 0 ? `Precio: $ ${it.precioUnitario.toLocaleString('es-CO')} / ${it.unidad}` : 'Precio no pactado'}
-                ${it.condicionPagoBrocoli ? ` • <span class="text-emerald-800 font-bold">${it.condicionPagoBrocoli}</span>` : ''}
-                ${it.observaciones ? ` • <span class="text-amber-800 font-semibold">${it.observaciones}</span>` : ''}
+                ${it.precioUnitario > 0 ? `Precio: $ ${esc(it.precioUnitario.toLocaleString('es-CO'))} / ${esc(it.unidad)}` : 'Precio no pactado'}
+                ${it.condicionPagoBrocoli ? ` • <span class="text-emerald-800 font-bold">${esc(it.condicionPagoBrocoli)}</span>` : ''}
+                ${it.observaciones ? ` • <span class="text-amber-800 font-semibold">${esc(it.observaciones)}</span>` : ''}
               </p>
             </div>
             <div class="text-right shrink-0 tabular-nums">
               <span class="bg-emerald-100 text-emerald-950 font-black text-xs px-2.5 py-1 rounded-xl inline-block border border-emerald-300/80 shadow-2xs">
-                ${it.cantidad.toLocaleString('es-CO')} ${it.unidad}
+                ${esc(it.cantidad.toLocaleString('es-CO'))} ${esc(it.unidad)}
               </span>
-              ${it.subtotalEstimado > 0 ? `<p class="text-xs font-black text-emerald-700 mt-1">$ ${it.subtotalEstimado.toLocaleString('es-CO')}</p>` : ''}
+              ${it.subtotalEstimado > 0 ? `<p class="text-xs font-black text-emerald-700 mt-1">$ ${esc(it.subtotalEstimado.toLocaleString('es-CO'))}</p>` : ''}
             </div>
           </div>
         `).join("")}
@@ -2115,12 +2121,12 @@ function renderizarPedidosDelDia() {
             ${ped.items.map(it => `
               <tr class="hover:bg-emerald-50/30 transition">
                 <td class="py-2 font-extrabold text-slate-900">
-                  ${it.producto}${it.modalidadBrocoli ? ` <span class="text-emerald-700 font-black">(${it.modalidadBrocoli})</span>` : ''}
-                  ${it.condicionPagoBrocoli ? `<div class="text-[10px] text-slate-500 font-medium">Condición: ${it.condicionPagoBrocoli}</div>` : ''}
+                  ${esc(it.producto)}${it.modalidadBrocoli ? ` <span class="text-emerald-700 font-black">(${esc(it.modalidadBrocoli)})</span>` : ''}
+                  ${it.condicionPagoBrocoli ? `<div class="text-[10px] text-slate-500 font-medium">Condición: ${esc(it.condicionPagoBrocoli)}</div>` : ''}
                 </td>
                 <td class="py-2">
                   <span class="bg-emerald-50 text-emerald-900 px-2.5 py-0.5 rounded-lg font-black border border-emerald-200/80">
-                    ${it.cantidad.toLocaleString('es-CO')} ${it.unidad}
+                    ${esc(it.cantidad.toLocaleString('es-CO'))} ${esc(it.unidad)}
                   </span>
                 </td>
                 <td class="py-2">
@@ -2130,14 +2136,14 @@ function renderizarPedidosDelDia() {
                     it.clienteDestino.includes("Ara") ? "bg-amber-50 text-amber-700 border border-amber-200" :
                     "bg-slate-100 text-slate-700 border border-slate-200/80"
                   }">
-                    ${it.clienteDestino}
+                    ${esc(it.clienteDestino)}
                   </span>
                 </td>
                 <td class="py-2 text-right font-semibold text-slate-600">
-                  ${it.precioUnitario > 0 ? `$ ${it.precioUnitario.toLocaleString('es-CO')}` : '-'}
+                  ${it.precioUnitario > 0 ? `$ ${esc(it.precioUnitario.toLocaleString('es-CO'))}` : '-'}
                 </td>
                 <td class="py-2 text-right font-black text-emerald-700">
-                  ${it.subtotalEstimado > 0 ? `$ ${it.subtotalEstimado.toLocaleString('es-CO')}` : '-'}
+                  ${it.subtotalEstimado > 0 ? `$ ${esc(it.subtotalEstimado.toLocaleString('es-CO'))}` : '-'}
                 </td>
               </tr>
             `).join("")}
@@ -2259,7 +2265,7 @@ function exportarExcelPlanta() {
   const keys = Object.keys(filas[0]);
   hoja['!cols'] = keys.map(k => ({ wch: Math.max(k.length + 3, 16) }));
   XLSX.utils.book_append_sheet(libro, hoja, "Ruta Llegadas Planta");
-  XLSX.writeFile(libro, `PLANTA_Despachos_${estado.perfilActivo}_${estado.fecha}.xlsx`);
+  XLSX.writeFile(libro, `Makand_PLANTA_Despachos_${estado.perfilActivo}_${estado.fecha}.xlsx`);
   mostrarToast("🏭 Excel para Planta descargado");
 }
 
@@ -2315,7 +2321,7 @@ function exportarExcelAdministracion() {
   const keys = Object.keys(filas[0]);
   hoja['!cols'] = keys.map(k => ({ wch: Math.max(k.length + 3, 20) }));
   XLSX.utils.book_append_sheet(libro, hoja, "Liquidación y Compras");
-  XLSX.writeFile(libro, `ADMINISTRACION_Compras_${estado.fecha}.xlsx`);
+  XLSX.writeFile(libro, `Makand_ADMINISTRACION_Compras_${estado.fecha}.xlsx`);
   mostrarToast("💼 Excel de Administración descargado");
 }
 
@@ -2332,7 +2338,8 @@ function construirTextoWhatsApp() {
 
   const horasOrdenadas = Object.keys(gruposHorario).sort();
 
-  let texto = `📋 *PROGRAMACIÓN DE DESPACHOS Y LLEGADAS A PLANTA*\n`;
+  let texto = `*MAKAND* · _Cultivamos salud para ti_\n`;
+  texto += `📋 *PROGRAMACIÓN DE DESPACHOS Y LLEGADAS A PLANTA*\n`;
   texto += `🗓️ *Fecha:* ${formatearFecha(estado.fecha)} (${obtenerNombreDiaSemana(estado.fecha)})\n\n`;
 
   texto += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -2553,7 +2560,7 @@ function renderizarTorreControlGerencia() {
         contSello.innerHTML = `
           <div class="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xs">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>🛡️ Aprobado por Gerencia (${ap.hora})</span>
+            <span>🛡️ Aprobado por Gerencia (${esc(ap.hora)})</span>
           </div>
         `;
       } catch (e) {
@@ -2691,7 +2698,7 @@ window.copiarResumenEjecutivoWhatsApp = function() {
   }
 
   let texto = `📊 *INFORME EJECUTIVO DE COMPRAS Y DESPACHOS*\n`;
-  texto += `🏢 *AgroGestión Pro | Dirección y Gerencia*\n`;
+  texto += `🏢 *MAKAND | Dirección y Gerencia*\n`;
   texto += `📅 *Fecha:* ${fechaFmt}\n`;
   texto += `🛡️ *Estado:* ${textoAprobacion}\n`;
   texto += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
@@ -2774,15 +2781,15 @@ window.imprimirActaOficialGerencia = function() {
 
       filasHtml.push(`
         <tr class="hover:bg-slate-50">
-          <td class="p-1.5 border border-slate-300 font-bold">${ped.proveedor.horaPlanta || '-'}</td>
-          <td class="p-1.5 border border-slate-300 font-bold">${ped.proveedor.nombreComun}</td>
-          <td class="p-1.5 border border-slate-300">${ped.proveedor.razonSocialFactura}</td>
-          <td class="p-1.5 border border-slate-300 font-bold text-slate-900">${it.producto}</td>
-          <td class="p-1.5 border border-slate-300 text-center font-bold">${it.cantidad.toLocaleString('es-CO')} ${it.unidad}</td>
+          <td class="p-1.5 border border-slate-300 font-bold">${esc(ped.proveedor.horaPlanta || '-')}</td>
+          <td class="p-1.5 border border-slate-300 font-bold">${esc(ped.proveedor.nombreComun)}</td>
+          <td class="p-1.5 border border-slate-300">${esc(ped.proveedor.razonSocialFactura)}</td>
+          <td class="p-1.5 border border-slate-300 font-bold text-slate-900">${esc(it.producto)}</td>
+          <td class="p-1.5 border border-slate-300 text-center font-bold">${esc(it.cantidad.toLocaleString('es-CO'))} ${esc(it.unidad)}</td>
           <td class="p-1.5 border border-slate-300 text-right">${it.precioUnitario > 0 ? `$ ${it.precioUnitario.toLocaleString('es-CO')}` : 'Sin pactar'}</td>
           <td class="p-1.5 border border-slate-300 text-right font-bold text-emerald-800">${sub > 0 ? `$ ${sub.toLocaleString('es-CO')}` : '-'}</td>
-          <td class="p-1.5 border border-slate-300 font-semibold">${it.clienteDestino}</td>
-          <td class="p-1.5 border border-slate-300 text-[10px]">${it.condicion || 'Estándar'}</td>
+          <td class="p-1.5 border border-slate-300 font-semibold">${esc(it.clienteDestino)}</td>
+          <td class="p-1.5 border border-slate-300 text-[10px]">${esc(it.condicion || 'Estándar')}</td>
         </tr>
       `);
     });
@@ -2816,7 +2823,7 @@ function renderizarOpcionesSelectProveedoresPrecios() {
   if (!select) return;
 
   select.innerHTML = estado.catalogo.map(p => `
-    <option value="${p.id}">${p.nombreComun} (${p.razonSocialFactura})</option>
+    <option value="${esc(p.id)}">${esc(p.nombreComun)} (${esc(p.razonSocialFactura)})</option>
   `).join("");
 
   const existeActual = estado.catalogo.some(p => p.id === estado.proveedorIdParaEdicionPrecios);
@@ -2874,7 +2881,7 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
           <span class="w-6 h-6 bg-slate-800 text-white rounded-full flex items-center justify-center text-xs font-black">${idx + 1}</span>
           <input 
             type="text" 
-            value="${pr.producto}" 
+            value="${esc(pr.producto)}" 
             placeholder="Nombre de la hortaliza/producto"
             onchange="actualizarDatoProductoEdicion(${idx}, 'producto', this.value)"
             class="font-extrabold text-sm text-slate-900 bg-white border border-slate-300 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-emerald-500 outline-none"
@@ -2920,7 +2927,7 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
             onchange="actualizarDatoProductoEdicion(${idx}, 'unidadMedida', this.value)"
             class="w-full h-10 px-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-800 text-xs outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
-            ${UNIDADES_CATALOGO.map(u => `<option value="${u}" ${pr.unidadMedida === u ? 'selected' : ''}>${u}</option>`).join("")}
+            ${UNIDADES_CATALOGO.map(u => `<option value="${esc(u)}" ${pr.unidadMedida === u ? 'selected' : ''}>${esc(u)}</option>`).join("")}
           </select>
         </div>
 
@@ -2928,7 +2935,7 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
           <label class="block font-semibold text-slate-600 mb-1">Condición Comercial</label>
           <input 
             type="text" 
-            value="${pr.condicion || ''}" 
+            value="${esc(pr.condicion)}" 
             placeholder="Ej. CREDITO 45 DIAS"
             onchange="actualizarDatoProductoEdicion(${idx}, 'condicion', this.value)"
             class="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 text-xs outline-none focus:ring-2 focus:ring-emerald-500"
@@ -2939,7 +2946,7 @@ window.cargarProductosProveedorParaEdicion = function(provId) {
           <label class="block font-semibold text-slate-600 mb-1">Observaciones / Notas</label>
           <input 
             type="text" 
-            value="${pr.notas || ''}" 
+            value="${esc(pr.notas)}" 
             placeholder="Ej. Ajuste mensual, etc."
             onchange="actualizarDatoProductoEdicion(${idx}, 'notas', this.value)"
             class="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white font-normal text-slate-700 text-xs outline-none focus:ring-2 focus:ring-emerald-500"
@@ -3047,27 +3054,23 @@ function obtenerClaveCorteQuincenal(fechaIso) {
   const anio = partes[0];
   const mes = partes[1];
   const diaNum = parseInt(partes[2], 10);
-  if (diaNum === 1 || diaNum === 16) {
-    return `corte_${anio}_${mes}_dia_${diaNum}`;
-  }
-  return `corte_manual_${anio}_${mes}_${diaNum}`;
+  // Una "clave de corte" por quincena (días 1-15 = Q1, 16-fin de mes = Q2): actualizar precios
+  // cualquier día de la quincena cubre toda la quincena.
+  return `quincena_${anio}_${mes}_Q${diaNum >= 16 ? 2 : 1}`;
 }
 
 window.verificarAlertaQuincenalMC = function(forzarApertura = false) {
   const modal = document.getElementById("modalAlertaQuincenalMC");
   if (!modal) return;
 
-  const partes = (estado.fecha || "").split("-");
-  const diaNum = parseInt(partes[2], 10);
-  const esDiaCorte = (diaNum === 1 || diaNum === 16);
-
   if (forzarApertura) {
     abrirModalAlertaQuincenalMC(true);
     return;
   }
 
-  // Se dispara automáticamente cuando el perfil activo es Señora MC ('claudia') y la fecha es día 1 o 16
-  if (estado.perfilActivo === "claudia" && esDiaCorte) {
+  // Se dispara automáticamente cuando Claudia entra y la quincena de la fecha elegida aún no tiene
+  // actualización de precios ni confirmación (no solo el día 1 o 16 exactos).
+  if (estado.perfilActivo === "claudia") {
     const claveCorte = obtenerClaveCorteQuincenal(estado.fecha);
     const yaConfirmado = localStorage.getItem("agri_mc_confirmacion_" + claveCorte);
     if (!yaConfirmado) {
@@ -3086,7 +3089,9 @@ window.abrirModalAlertaQuincenalMC = function(esManual = false) {
   if (subtitulo) {
     if (diaNum === 1 || diaNum === 16) {
       subtitulo.innerText = `Hoy es día ${diaNum} del mes (Corte Quincenal Obligatorio). Antes de proceder debes asegurarte de actualizar los precios o confirmar si continúas con los precios anteriores.`;
-    } else if (esManual) {
+    } else if (!esManual) {
+      subtitulo.innerText = `Aún no se han actualizado los precios de esta quincena (cortes los días 1 y 16). Sube el Excel o confirma si continúas con las tarifas vigentes.`;
+    } else {
       subtitulo.innerText = `Actualización de Precios desde Excel y Control Quincenal (Días 1 y 16). Sube aquí tu archivo .xlsx / .xls / .csv para actualizar tarifas y condiciones comerciales al instante.`;
     }
   }
@@ -3108,7 +3113,7 @@ window.confirmarPreciosAnterioresMC = function() {
     timestamp: new Date().toISOString()
   };
   localStorage.setItem("agri_mc_confirmacion_" + claveCorte, JSON.stringify(registroConfirmacion));
-  localStorage.setItem("agri_alerta_precios_sin_actualizar_" + estado.fecha, "true");
+  localStorage.setItem("agri_alerta_precios_sin_actualizar_" + claveCorte, "true");
 
   if (typeof registrarEventoAuditoriaSeguridad === "function") {
     registrarEventoAuditoriaSeguridad(
@@ -3544,7 +3549,7 @@ window.procesarMatrizActualizacionPrecios = function(matriz, nombreOrigen = "Exc
     alertaPreciosSinActualizar: false,
     timestamp: ahoraIso
   }));
-  localStorage.removeItem("agri_alerta_precios_sin_actualizar_" + estado.fecha);
+  localStorage.removeItem("agri_alerta_precios_sin_actualizar_" + claveCorte);
 
   if (typeof registrarEventoAuditoriaSeguridad === "function") {
     registrarEventoAuditoriaSeguridad(
@@ -3659,12 +3664,44 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 // ============================================================================
 (() => {
   const SALT_CORPORATIVO = "AGROGESTION_PRO_V52_SALT_2026_SEC";
-  const ITERACIONES_PBKDF2 = 5000;
-  const CLAVES_INICIALES = {
-    admin: "Gerencia2026*",
-    claudia: "Claudia2026*",
-    camilo: "Camilo2026*"
+  const ITERACIONES_LEGADO = 5000;   // hashes antiguos (sin prefijo)
+  const ITERACIONES_PBKDF2 = 210000; // hashes nuevos (prefijo "v2$")
+  // Solo hashes de las claves iniciales (ya no hay contraseñas en texto plano en el código)
+  const HASHES_INICIALES = {
+    admin: "80ef0766f4250f2e4aa0198fa4b7e8847d530302c14504516fe11a491be695cb",
+    claudia: "016e1498031ad753f1be8ec9338f615cabf769693c5c59cf1cc3f2b7b6f24e01",
+    camilo: "5525908ea2967b902b9cecbf1a091feaccf7c69ef94ea02dc3121c1f874ea98c"
   };
+  const LS_HASHES = "agri_hashes_claves_v52";
+
+  function leerHashesLocales() {
+    try { return JSON.parse(localStorage.getItem(LS_HASHES) || "{}"); } catch (e) { return {}; }
+  }
+
+  // Verifica una clave contra: hash personalizado (v2 o legado) o, si no hay, el hash inicial.
+  async function verificarClavePerfil(perfilId, clave) {
+    // Con Supabase configurado, la contraseña se valida en el servidor
+    if (window.NubeAuth && window.NubeAuth.activo) return window.NubeAuth.login(perfilId, clave);
+    const guardado = leerHashesLocales()[perfilId];
+    if (!guardado) {
+      return (await derivarHashPBKDF2(clave, perfilId, ITERACIONES_PBKDF2)) === HASHES_INICIALES[perfilId];
+    }
+    if (guardado.startsWith("v2$")) {
+      return (await derivarHashPBKDF2(clave, perfilId, ITERACIONES_PBKDF2)) === guardado.slice(3);
+    }
+    // Hash legado: si coincide, se migra al formato nuevo
+    if ((await derivarHashPBKDF2(clave, perfilId, ITERACIONES_LEGADO)) === guardado) {
+      await guardarHashClave(perfilId, clave);
+      return true;
+    }
+    return false;
+  }
+
+  async function guardarHashClave(perfilId, clave) {
+    const hashes = leerHashesLocales();
+    hashes[perfilId] = "v2$" + await derivarHashPBKDF2(clave, perfilId, ITERACIONES_PBKDF2);
+    localStorage.setItem(LS_HASHES, JSON.stringify(hashes));
+  }
 
   // Estado privado inaccesible desde `window`
   let mutexVerificando = false;
@@ -3673,48 +3710,31 @@ window.subirExcelActualizacionPreciosMC = function(event) {
   let bloqueadoHastaTimestamp = 0;
 
   // Función determinística de estiramiento criptográfico (Web Crypto PBKDF2 + Fallback SHA-256)
-  async function derivarHashPBKDF2(passwordPlano, perfilId) {
+  // Requiere Web Crypto (HTTPS o localhost). Se eliminó el hash casero de respaldo por ser débil.
+  async function derivarHashPBKDF2(passwordPlano, perfilId, iteraciones) {
     const entrada = `${SALT_CORPORATIVO}::${perfilId}::${passwordPlano}`;
-    if (window.crypto && window.crypto.subtle && window.TextEncoder) {
-      try {
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey(
-          "raw",
-          enc.encode(entrada),
-          { name: "PBKDF2" },
-          false,
-          ["deriveBits"]
-        );
-        const derivedBits = await window.crypto.subtle.deriveBits(
-          {
-            name: "PBKDF2",
-            salt: enc.encode(SALT_CORPORATIVO + "_" + perfilId),
-            iterations: ITERACIONES_PBKDF2,
-            hash: "SHA-256"
-          },
-          keyMaterial,
-          256
-        );
-        const hashArray = Array.from(new Uint8Array(derivedBits));
-        return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-      } catch (e) {
-        // Fallback si se abre en contexto restringido
-      }
+    if (!(window.crypto && window.crypto.subtle && window.TextEncoder)) {
+      throw new Error("Web Crypto no disponible: abre la app por HTTPS.");
     }
-
-    // Fallback rápido optimizado para móviles (5,000 rondas)
-    let h1 = 0xdeadbeef ^ entrada.length;
-    let h2 = 0x41c6ce57 ^ entrada.length;
-    for (let r = 0; r < ITERACIONES_PBKDF2; r++) {
-      for (let i = 0; i < entrada.length; i++) {
-        const ch = entrada.charCodeAt(i);
-        h1 = Math.imul(h1 ^ ch ^ r, 2654435761);
-        h2 = Math.imul(h2 ^ ch ^ (r & 0xff), 1597334677);
-      }
-    }
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-    return (h1 >>> 0).toString(16).padStart(8, "0") + (h2 >>> 0).toString(16).padStart(8, "0");
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw",
+      enc.encode(entrada),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits"]
+    );
+    const derivedBits = await window.crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: enc.encode(SALT_CORPORATIVO + "_" + perfilId),
+        iterations: iteraciones,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      256
+    );
+    return Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
   function cargarEstadoBloqueo() {
@@ -3763,7 +3783,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
       cont.innerHTML = lista.slice(0, 20).map(item => {
         const color = item.tipo.includes("INTRUSION") || item.tipo.includes("FALLIDO") ? "text-rose-400" :
                       item.tipo.includes("PRECIO") ? "text-amber-300" : "text-emerald-400";
-        return `<div><span class="text-slate-500">[${item.fechaHora}]</span> <strong class="${color}">${item.tipo}:</strong> ${item.detalle}</div>`;
+        return `<div><span class="text-slate-500">[${esc(item.fechaHora)}]</span> <strong class="${color}">${esc(item.tipo)}:</strong> ${esc(item.detalle)}</div>`;
       }).join("");
     } catch (e) {}
   }
@@ -3800,6 +3820,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 
   window.revocarSesionesDispositivo = function() {
     sesionesEnMemoria.clear();
+    if (window.NubeAuth && window.NubeAuth.activo) window.NubeAuth.logout();
     localStorage.removeItem("agri_sesiones_autorizadas_v54");
     localStorage.removeItem("agri_sesiones_autorizadas_v52");
     registrarEventoAuditoriaSeguridad("SESION_CERRADA", "Se cerró la sesión activa.");
@@ -3910,28 +3931,15 @@ window.subirExcelActualizacionPreciosMC = function(event) {
 
       if (btn) btn.innerText = "⏳ Verificando credencial...";
 
-      const claveDefault = CLAVES_INICIALES[perfilPendienteAutenticacion] || "Gerencia2026*";
-      const hashesGuardadosRaw = localStorage.getItem("agri_hashes_claves_v52");
-      const hashesGuardados = hashesGuardadosRaw ? JSON.parse(hashesGuardadosRaw) : {};
-      const hashEsperado = hashesGuardados[perfilPendienteAutenticacion];
-
       let esValida = false;
-      if (hashEsperado) {
-        // 1. Si hay hash personalizado guardado
-        const hashIngresado = await derivarHashPBKDF2(claveIngresada, perfilPendienteAutenticacion);
-        if (hashIngresado === hashEsperado) {
-          esValida = true;
+      try {
+        esValida = await verificarClavePerfil(perfilPendienteAutenticacion, claveIngresada);
+      } catch (e) {
+        if (lblErr) {
+          lblErr.innerText = "⚠️ " + e.message;
+          lblErr.classList.remove("hidden");
         }
-      } else if (claveIngresada === claveDefault) {
-        // 2. Contraseña corporativa inicial por defecto
-        esValida = true;
-      } else {
-        // 3. Fallback de derivación PBKDF2
-        const hashIngresado = await derivarHashPBKDF2(claveIngresada, perfilPendienteAutenticacion);
-        const hashDef = await derivarHashPBKDF2(claveDefault, perfilPendienteAutenticacion);
-        if (hashIngresado === hashDef) {
-          esValida = true;
-        }
+        return;
       }
 
       if (esValida) {
@@ -3986,17 +3994,12 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     }
 
     const perfilId = perfilPendienteAutenticacion || estado.perfilActivo;
-    const claveDefault = CLAVES_INICIALES[perfilId] || "Gerencia2026*";
-    const hashesRaw = localStorage.getItem("agri_hashes_claves_v52");
-    const hashes = hashesRaw ? JSON.parse(hashesRaw) : {};
-    let hashEsperado = hashes[perfilId];
-
     let coincideActual = false;
-    if (claveActual === claveDefault) {
-      coincideActual = true;
-    } else if (hashEsperado) {
-      const hashActual = await derivarHashPBKDF2(claveActual, perfilId);
-      if (hashActual === hashEsperado) coincideActual = true;
+    try {
+      coincideActual = await verificarClavePerfil(perfilId, claveActual);
+    } catch (e) {
+      alert(e.message);
+      return;
     }
 
     if (!coincideActual) {
@@ -4005,17 +4008,18 @@ window.subirExcelActualizacionPreciosMC = function(event) {
       return;
     }
 
-    hashes[perfilId] = await derivarHashPBKDF2(claveNueva, perfilId);
-    localStorage.setItem("agri_hashes_claves_v52", JSON.stringify(hashes));
+    try {
+      if (window.NubeAuth && window.NubeAuth.activo) await window.NubeAuth.cambiarClave(claveNueva);
+      else await guardarHashClave(perfilId, claveNueva);
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
     if (inpActual) inpActual.value = "";
     if (inpNueva) inpNueva.value = "";
 
-    if (typeof publicarEstadoEnNubeMultidispositivo === "function") {
-      publicarEstadoEnNubeMultidispositivo();
-    }
-
     registrarEventoAuditoriaSeguridad("CLAVE_ACTUALIZADA", `Se actualizó la contraseña PBKDF2 del perfil ${PERFILES[perfilId].nombre}`);
-    mostrarToast("🔐 Contraseña actualizada y sincronizada en la nube.");
+    mostrarToast(window.NubeAuth && window.NubeAuth.activo ? "🔐 Contraseña actualizada en todos tus dispositivos." : "🔐 Contraseña actualizada en este dispositivo.");
   }
 
   // ==========================================
@@ -4029,10 +4033,8 @@ window.subirExcelActualizacionPreciosMC = function(event) {
       return;
     }
 
-    const hashesRaw = localStorage.getItem("agri_hashes_claves_v52");
-    const hashes = hashesRaw ? JSON.parse(hashesRaw) : {};
-    const sesionesRaw = localStorage.getItem("agri_sesiones_autorizadas_v54");
-    const sesiones = sesionesRaw ? JSON.parse(sesionesRaw) : {};
+    const hashes = leerHashesLocales();
+    const nube = Boolean(window.NubeAuth && window.NubeAuth.activo);
 
     const perfilesArr = [
       { id: "camilo", rolDetalle: "Tomates, Lechugas, Salanova, Diego y Gabriel", colorBadge: "emerald" },
@@ -4043,8 +4045,6 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     cont.innerHTML = perfilesArr.map(p => {
       const info = PERFILES[p.id];
       const tieneClavePersonalizada = Boolean(hashes[p.id]);
-      const clavePorDefecto = CLAVES_INICIALES[p.id];
-      const autorizadaEnEsteEquipo = Boolean(sesiones[p.id]);
 
       return `
         <div class="bg-white border-2 ${p.id === 'camilo' ? 'border-emerald-300' : p.id === 'claudia' ? 'border-teal-300' : 'border-amber-300'} rounded-2xl p-4 shadow-2xs space-y-3">
@@ -4055,7 +4055,7 @@ window.subirExcelActualizacionPreciosMC = function(event) {
               </span>
               <div>
                 <h4 class="font-extrabold text-sm text-slate-900">${info.nombre}</h4>
-                <p class="text-[11px] text-slate-500">${p.rolDetalle}</p>
+                <p class="text-[11px] text-slate-500">${esc(p.rolDetalle)}</p>
               </div>
             </div>
             <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
@@ -4066,13 +4066,10 @@ window.subirExcelActualizacionPreciosMC = function(event) {
           <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div>
               <span class="text-slate-500 text-[10px] block">Contraseña Corporativa:</span>
-              <strong class="font-mono text-slate-900 text-xs">${tieneClavePersonalizada ? '•••••••• (Personalizada)' : clavePorDefecto}</strong>
+              <strong class="font-mono text-slate-900 text-xs">${nube ? '•••••••• (guardada de forma segura)' : (tieneClavePersonalizada ? '•••••••• (Personalizada)' : '•••••••• (Inicial: cámbiala)')}</strong>
             </div>
             <div class="flex items-center gap-1.5 flex-wrap">
-              <button type="button" onclick="copiarClavePerfil('${clavePorDefecto}')" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs">
-                📋 Copiar Clave
-              </button>
-              ${tieneClavePersonalizada ? `
+              ${(!nube && tieneClavePersonalizada) ? `
                 <button type="button" onclick="restablecerClavePerfilGerencia('${p.id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2 py-1 rounded-lg text-[11px] font-bold shadow-2xs">
                   Restablecer
                 </button>
@@ -4080,9 +4077,9 @@ window.subirExcelActualizacionPreciosMC = function(event) {
               <button type="button" onclick="solicitarCambioClaveGerenciaDirecto('${p.id}')" class="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs">
                 Asignar Nueva
               </button>
-              <button type="button" onclick="entrarDirectoComoPerfilGerencia('${p.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs">
+              ${nube ? '' : `<button type="button" onclick="entrarDirectoComoPerfilGerencia('${p.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs">
                 Ingresar
-              </button>
+              </button>`}
             </div>
           </div>
         </div>
@@ -4092,50 +4089,41 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     modal.classList.remove("hidden");
   };
 
-  window.copiarClavePerfil = function(clave) {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(clave).then(() => {
-        mostrarToast(`📋 Clave copiada: ${clave}`);
-      }).catch(() => {
-        prompt("Copia la contraseña:", clave);
-      });
-    } else {
-      prompt("Copia la contraseña:", clave);
-    }
-  };
-
   window.cerrarModalGestionClavesGerencia = function() {
     const modal = document.getElementById("modalGestionClavesGerencia");
     if (modal) modal.classList.add("hidden");
   };
 
   window.restablecerClavePerfilGerencia = async function(idPerfil) {
-    if (!confirm(`¿Restablecer la contraseña de ${PERFILES[idPerfil].nombre} a su clave inicial por defecto (${CLAVES_INICIALES[idPerfil]})?`)) return;
-    const hashesRaw = localStorage.getItem("agri_hashes_claves_v52");
-    const hashes = hashesRaw ? JSON.parse(hashesRaw) : {};
-    delete hashes[idPerfil];
-    localStorage.setItem("agri_hashes_claves_v52", JSON.stringify(hashes));
-    if (typeof publicarEstadoEnNubeMultidispositivo === "function") {
-      await publicarEstadoEnNubeMultidispositivo();
+    if (window.NubeAuth && window.NubeAuth.activo) {
+      alert("Las contraseñas se administran en Supabase: Authentication → Users → (usuario) → Reset password / Update user.");
+      return;
     }
-    mostrarToast(`✅ Contraseña de ${PERFILES[idPerfil].nombre} restablecida a ${CLAVES_INICIALES[idPerfil]}`);
+    if (!confirm(`¿Restablecer la contraseña de ${PERFILES[idPerfil].nombre} a su clave inicial por defecto?`)) return;
+    const hashes = leerHashesLocales();
+    delete hashes[idPerfil];
+    localStorage.setItem(LS_HASHES, JSON.stringify(hashes));
+    mostrarToast(`✅ Contraseña de ${PERFILES[idPerfil].nombre} restablecida a la inicial (en este dispositivo)`);
     abrirModalGestionClavesGerencia();
   };
 
   window.solicitarCambioClaveGerenciaDirecto = async function(idPerfil) {
-    const nueva = prompt(`Ingresa la nueva contraseña para ${PERFILES[idPerfil].nombre} (mínimo 6 caracteres):`);
-    if (!nueva || nueva.trim().length < 6) {
-      if (nueva !== null) alert("La contraseña debe tener al menos 6 caracteres.");
+    const nube = Boolean(window.NubeAuth && window.NubeAuth.activo);
+    const minimo = nube ? 8 : 6;
+    const nueva = prompt(`Ingresa la nueva contraseña para ${PERFILES[idPerfil].nombre} (mínimo ${minimo} caracteres):`);
+    if (!nueva || nueva.trim().length < minimo) {
+      if (nueva !== null) alert(`La contraseña debe tener al menos ${minimo} caracteres.`);
       return;
     }
-    const hashesRaw = localStorage.getItem("agri_hashes_claves_v52");
-    const hashes = hashesRaw ? JSON.parse(hashesRaw) : {};
-    hashes[idPerfil] = await derivarHashPBKDF2(nueva.trim(), idPerfil);
-    localStorage.setItem("agri_hashes_claves_v52", JSON.stringify(hashes));
-    if (typeof publicarEstadoEnNubeMultidispositivo === "function") {
-      await publicarEstadoEnNubeMultidispositivo();
+    try {
+      if (nube && idPerfil === estado.perfilActivo) await window.NubeAuth.cambiarClave(nueva.trim());
+      else if (nube) await window.NubeAuth.cambiarClaveDe(idPerfil, nueva.trim());
+      else await guardarHashClave(idPerfil, nueva.trim());
+    } catch (e) {
+      alert(e.message);
+      return;
     }
-    mostrarToast(`🔐 Nueva contraseña guardada y sincronizada para ${PERFILES[idPerfil].nombre}`);
+    mostrarToast(`🔐 Nueva contraseña guardada para ${PERFILES[idPerfil].nombre}${nube ? "" : " (solo en este dispositivo)"}`);
     abrirModalGestionClavesGerencia();
   };
 
@@ -4144,11 +4132,8 @@ window.subirExcelActualizacionPreciosMC = function(event) {
     solicitarAutenticacionPerfil(idPerfil);
   };
 
-  window.sincronizarClavesNubeInmediato = async function() {
-    if (typeof publicarEstadoEnNubeMultidispositivo === "function") {
-      await publicarEstadoEnNubeMultidispositivo();
-      mostrarToast("☁️ Contraseñas sincronizadas en todos los celulares y computadores.");
-    }
+  window.sincronizarClavesNubeInmediato = function() {
+    mostrarToast("🔒 Por seguridad, las contraseñas ya no se sincronizan en la nube: cámbialas en cada dispositivo.");
   };
 
   window.inicializarModuloCiberseguridad = function() {
@@ -4503,7 +4488,7 @@ function renderizarListaModalMasivoWA() {
   contenedor.innerHTML = pedidos.map((ped, index) => {
     const contactoProveedor = ped.proveedor.contacto || "Sin teléfono";
     const destinoMostrar = esPrueba ? `Mi WhatsApp (${miTelPrueba || 'Falta número'})` : `Contacto proveedor: ${contactoProveedor}`;
-    const productosTexto = (ped.items || []).map(it => `${it.producto} (${fmtMiles(it.cantidad)} ${it.unidad})`).join(", ");
+    const productosTexto = (ped.items || []).map(it => `${esc(it.producto)} (${fmtMiles(it.cantidad)} ${esc(it.unidad)})`).join(", ");
 
     return `
       <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2.5 transition hover:border-emerald-300">
@@ -4511,16 +4496,16 @@ function renderizarListaModalMasivoWA() {
           <span class="w-7 h-7 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">${index + 1}</span>
           <div>
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="font-extrabold text-slate-900 text-xs sm:text-sm">${ped.proveedor.nombreComun}</span>
-              <span class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded">⏰ ${ped.proveedor.horaPlanta}</span>
+              <span class="font-extrabold text-slate-900 text-xs sm:text-sm">${esc(ped.proveedor.nombreComun)}</span>
+              <span class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded">⏰ ${esc(ped.proveedor.horaPlanta)}</span>
             </div>
-            <p class="text-[11px] text-slate-500 font-medium">${productosTexto}</p>
-            <p class="text-[10px] ${esPrueba ? 'text-amber-800 font-bold' : 'text-slate-600'}">📍 Destino envío: <strong>${destinoMostrar}</strong></p>
+            <p class="text-[11px] text-slate-500 font-medium">${esc(productosTexto)}</p>
+            <p class="text-[10px] ${esPrueba ? 'text-amber-800 font-bold' : 'text-slate-600'}">📍 Destino envío: <strong>${esc(destinoMostrar)}</strong></p>
           </div>
         </div>
         <button 
           type="button" 
-          onclick="enviarConfirmacionIndividualDesdeMasivo('${ped.id}')" 
+          onclick="enviarConfirmacionIndividualDesdeMasivo(${jsArg(ped.id)})" 
           class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-1.5 rounded-xl transition shadow-2xs flex items-center gap-1 active:scale-95"
         >
           <span>📲</span> Enviar este
@@ -4905,167 +4890,7 @@ window.eliminarRegistroPedido = function(id) {
   }
 };
 
-function obtenerUrlCanalNube() {
-  const cfg = obtenerConfiguracionNubeYOutlook();
-  const claveLimpia = (cfg.codigoEmpresa || "AGROGESTION_CORP_2026").replace(/[^A-Z0-9_-]/gi, "_");
-  return `https://kvdb.io/Agu2p6V8wX9mK3rT5nQ1sL/${CLOUD_SYNC_NAMESPACE}_${claveLimpia}`;
-}
-
-window.publicarEstadoEnNubeMultidispositivo = async function() {
-  if (sincronizandoAhora) return;
-  sincronizandoAhora = true;
-  actualizarIndicadorCloudUI("sincronizando");
-
-  try {
-    const url = obtenerUrlCanalNube();
-    let remoto = null;
-    try {
-      const respGet = await fetch(url, { method: "GET", cache: "no-store" });
-      if (respGet.ok) {
-        remoto = await respGet.json();
-      }
-    } catch (e) {}
-
-    const eliminadosUnidos = Array.from(new Set([
-      ...obtenerIdsEliminadosLocales(),
-      ...(remoto && Array.isArray(remoto.idsEliminados) ? remoto.idsEliminados : [])
-    ]));
-    localStorage.setItem("agri_ids_eliminados_v53", JSON.stringify(eliminadosUnidos));
-
-    const pedidosUnidos = fusionarColeccionPorId(
-      estado.pedidos,
-      remoto && Array.isArray(remoto.pedidos) ? remoto.pedidos : [],
-      eliminadosUnidos
-    );
-
-    const entregasUnidas = fusionarColeccionPorId(
-      estado.entregas,
-      remoto && Array.isArray(remoto.entregas) ? remoto.entregas : [],
-      eliminadosUnidos
-    );
-
-    estado.pedidos = pedidosUnidos;
-    estado.entregas = entregasUnidas;
-    localStorage.setItem("agri_pedidos_v4", JSON.stringify(estado.pedidos));
-    localStorage.setItem("agri_entregas_v4", JSON.stringify(estado.entregas));
-
-    let hashesLocales = {};
-    try {
-      hashesLocales = JSON.parse(localStorage.getItem("agri_hashes_claves_v52") || "{}");
-    } catch(e) {}
-
-    const payloadNube = {
-      actualizadoEn: new Date().toISOString(),
-      ultimoPerfil: estado.perfilActivo,
-      pedidos: estado.pedidos,
-      entregas: estado.entregas,
-      idsEliminados: eliminadosUnidos,
-      catalogo: estado.catalogo,
-      hashesClaves: hashesLocales
-    };
-
-    const respPut = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payloadNube)
-    });
-
-    if (respPut.ok) {
-      actualizarIndicadorCloudUI("ok");
-    } else {
-      actualizarIndicadorCloudUI("offline", "Guardado en cola local");
-    }
-  } catch (err) {
-    actualizarIndicadorCloudUI("offline", "Sin red momentánea");
-  } finally {
-    sincronizandoAhora = false;
-  }
-};
-
-window.sincronizarDesdeNubeHaciaDispositivo = async function(silencioso = true) {
-  if (sincronizandoAhora) return;
-  sincronizandoAhora = true;
-  if (!silencioso) actualizarIndicadorCloudUI("sincronizando");
-
-  try {
-    const url = obtenerUrlCanalNube();
-    const resp = await fetch(url, { method: "GET", cache: "no-store" });
-    if (!resp.ok) {
-      // Si el canal aún no existe en la nube, publicamos el estado actual del dispositivo para inicializarlo
-      sincronizandoAhora = false;
-      await publicarEstadoEnNubeMultidispositivo();
-      return;
-    }
-
-    const remoto = await resp.json();
-    if (remoto && typeof remoto === "object") {
-      const eliminadosUnidos = Array.from(new Set([
-        ...obtenerIdsEliminadosLocales(),
-        ...(Array.isArray(remoto.idsEliminados) ? remoto.idsEliminados : [])
-      ]));
-      localStorage.setItem("agri_ids_eliminados_v53", JSON.stringify(eliminadosUnidos));
-
-      // Sincronizar contraseñas corporativas actualizadas entre celulares y computadores
-      if (remoto.hashesClaves && typeof remoto.hashesClaves === "object") {
-        try {
-          const hashesLocales = JSON.parse(localStorage.getItem("agri_hashes_claves_v52") || "{}");
-          const hashesFusionados = { ...hashesLocales, ...remoto.hashesClaves };
-          localStorage.setItem("agri_hashes_claves_v52", JSON.stringify(hashesFusionados));
-        } catch(e) {}
-      }
-
-      const cantAntes = estado.pedidos.length;
-      estado.pedidos = fusionarColeccionPorId(estado.pedidos, remoto.pedidos || [], eliminadosUnidos);
-      estado.entregas = fusionarColeccionPorId(estado.entregas, remoto.entregas || [], eliminadosUnidos);
-
-      // Fusionar también catálogo de proveedores y precios actualizados entre dispositivos
-      if (Array.isArray(remoto.catalogo) && remoto.catalogo.length > 0) {
-        const mapaCatLocal = new Map((estado.catalogo || []).map(p => [p.id, p]));
-        let huboCambioCatalogo = false;
-        remoto.catalogo.forEach(pRem => {
-          if (!pRem || !pRem.id) return;
-          const pLoc = mapaCatLocal.get(pRem.id);
-          if (!pLoc) {
-            estado.catalogo.push(pRem);
-            huboCambioCatalogo = true;
-          } else {
-            const tLoc = new Date(pLoc.ultimaActualizacionPrecio || 0).getTime();
-            const tRem = new Date(pRem.ultimaActualizacionPrecio || 0).getTime();
-            if (tRem > tLoc) {
-              Object.assign(pLoc, pRem);
-              huboCambioCatalogo = true;
-            }
-          }
-        });
-        if (huboCambioCatalogo) {
-          localStorage.setItem("agri_catalogo_maestro_v4", JSON.stringify(estado.catalogo));
-          renderizarSelectFiltroProductos();
-          renderizarSemaforoCobertura();
-          renderizarListaProveedoresSugeridos();
-        }
-      }
-
-      localStorage.setItem("agri_pedidos_v4", JSON.stringify(estado.pedidos));
-      localStorage.setItem("agri_entregas_v4", JSON.stringify(estado.entregas));
-
-      renderizarPedidosDelDia();
-      renderizarSemaforoCobertura();
-      renderizarBuzonEntregas();
-      if (!document.getElementById("modalHistoricoSQL")?.classList.contains("hidden")) {
-        renderizarTablaHistoricoSQL();
-      }
-
-      actualizarIndicadorCloudUI("ok");
-      if (!silencioso || estado.pedidos.length !== cantAntes) {
-        mostrarToast(`☁️ Dispositivo sincronizado: ${fmtMiles(estado.pedidos.length)} pedidos en base común.`);
-      }
-    }
-  } catch (err) {
-    actualizarIndicadorCloudUI("offline");
-  } finally {
-    sincronizandoAhora = false;
-  }
-};
+// (La sincronización con la nube ahora vive en nube-supabase.js)
 
 window.sincronizarNubeManual = async function() {
   await publicarEstadoEnNubeMultidispositivo();
@@ -5248,21 +5073,21 @@ window.renderizarTablaHistoricoSQL = function() {
 
   if (!tbody) return;
   if (filas.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-bold">No hay registros en la base SQL para los filtros seleccionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-bold">No hay registros para los filtros seleccionados.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filas.map(f => `
     <tr class="hover:bg-slate-50">
-      <td class="p-2 font-bold text-slate-700">${f.fecha}</td>
-      <td class="p-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${f.usuarioId === 'camilo' ? 'bg-emerald-100 text-emerald-800' : f.usuarioId === 'claudia' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-900'}">${f.usuarioNombre}</span></td>
-      <td class="p-2 font-bold">${f.horaPlanta}</td>
-      <td class="p-2 font-black text-slate-900">${f.Aliado}</td>
-      <td class="p-2 font-bold text-slate-800">${f.producto}</td>
-      <td class="p-2 text-right font-black text-emerald-900">${fmtMiles(f.cantidad)} ${f.unidad}</td>
-      <td class="p-2 text-right font-semibold text-slate-700">$ ${fmtMiles(f.precioUnitario)}</td>
-      <td class="p-2 text-right font-black text-emerald-700">$ ${fmtMiles(f.subtotal)}</td>
-      <td class="p-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.clienteDestino.includes('Alkosto') ? 'bg-indigo-100 text-indigo-900' : 'bg-slate-100 text-slate-700'}">${f.clienteDestino}</span></td>
+      <td class="p-2 font-bold text-slate-700">${esc(f.fecha)}</td>
+      <td class="p-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-black ${f.usuarioId === 'camilo' ? 'bg-emerald-100 text-emerald-800' : f.usuarioId === 'claudia' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-900'}">${esc(f.usuarioNombre)}</span></td>
+      <td class="p-2 font-bold">${esc(f.horaPlanta)}</td>
+      <td class="p-2 font-black text-slate-900">${esc(f.Aliado)}</td>
+      <td class="p-2 font-bold text-slate-800">${esc(f.producto)}</td>
+      <td class="p-2 text-right font-black text-emerald-900">${esc(fmtMiles(f.cantidad))} ${esc(f.unidad)}</td>
+      <td class="p-2 text-right font-semibold text-slate-700">$ ${esc(fmtMiles(f.precioUnitario))}</td>
+      <td class="p-2 text-right font-black text-emerald-700">$ ${esc(fmtMiles(f.subtotal))}</td>
+      <td class="p-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.clienteDestino.includes('Alkosto') ? 'bg-indigo-100 text-indigo-900' : 'bg-slate-100 text-slate-700'}">${esc(f.clienteDestino)}</span></td>
     </tr>
   `).join("");
 };
@@ -5317,70 +5142,11 @@ window.exportarHistoricoExcelConsolidado = function() {
 
   const libro = XLSX.utils.book_new();
   const hoja = XLSX.utils.json_to_sheet(datosExcel);
-  XLSX.utils.book_append_sheet(libro, hoja, "Consolidado_SQL");
+  XLSX.utils.book_append_sheet(libro, hoja, "Consolidado");
   const desde = document.getElementById("sqlFechaDesde")?.value || estado.fecha;
   const hasta = document.getElementById("sqlFechaHasta")?.value || estado.fecha;
-  XLSX.writeFile(libro, `Consolidado_Historico_AgroGestion_${desde}_a_${hasta}.xlsx`);
+  XLSX.writeFile(libro, `Makand_Consolidado_Historico_${desde}_a_${hasta}.xlsx`);
   mostrarToast("📗 Excel Consolidado Histórico descargado con éxito");
-};
-
-// 🗄️ EXPORTAR ARCHIVO DE BASE DE DATOS SQL ESTÁNDAR (.SQL)
-window.exportarBaseDatosSQLArchivo = function() {
-  const filas = obtenerFilasFiltradasSQL();
-  if (filas.length === 0) {
-    alert("No hay registros en el rango seleccionado para generar el archivo .sql.");
-    return;
-  }
-
-  const esc = (val) => String(val || "").replace(/'/g, "''");
-  const lineasSQL = [
-    `-- ============================================================================`,
-    `-- AGROGESTIÓN PRO v5.3 - BASE DE DATOS SQL OFICIAL DE COMPRAS Y DESPACHOS`,
-    `-- Generado el: ${new Date().toLocaleString('es-CO')}`,
-    `-- Total Registros Exportados: ${filas.length}`,
-    `-- ============================================================================`,
-    ``,
-    `CREATE TABLE IF NOT EXISTS pedidos_agricolas_historico (`,
-    `  id_registro VARCHAR(64) PRIMARY KEY,`,
-    `  fecha_entrega DATE NOT NULL,`,
-    `  perfil_id VARCHAR(32) NOT NULL,`,
-    `  comprador_nombre VARCHAR(120) NOT NULL,`,
-    `  hora_planta VARCHAR(20),`,
-    `  modalidad_transporte VARCHAR(40),`,
-    `  Aliado_nombre VARCHAR(180) NOT NULL,`,
-    `  razon_social_factura VARCHAR(200),`,
-    `  telefono_contacto VARCHAR(60),`,
-    `  producto VARCHAR(160) NOT NULL,`,
-    `  cantidad DECIMAL(14,2) NOT NULL,`,
-    `  unidad_medida VARCHAR(50) NOT NULL,`,
-    `  precio_unitario_cop DECIMAL(14,2) NOT NULL,`,
-    `  subtotal_cop DECIMAL(16,2) NOT NULL,`,
-    `  cliente_destino VARCHAR(100) NOT NULL,`,
-    `  condicion_comercial VARCHAR(180),`,
-    `  observaciones TEXT`,
-    `);`,
-    ``
-  ];
-
-  filas.forEach((f, idx) => {
-    const idUnico = `${f.pedidoId}_${f.itemId || idx}`;
-    lineasSQL.push(
-      `INSERT INTO pedidos_agricolas_historico (id_registro, fecha_entrega, perfil_id, comprador_nombre, hora_planta, modalidad_transporte, Aliado_nombre, razon_social_factura, telefono_contacto, producto, cantidad, unidad_medida, precio_unitario_cop, subtotal_cop, cliente_destino, condicion_comercial, observaciones) VALUES ('${esc(idUnico)}', '${esc(f.fecha)}', '${esc(f.usuarioId)}', '${esc(f.usuarioNombre)}', '${esc(f.horaPlanta)}', '${esc(f.transporte)}', '${esc(f.Aliado)}', '${esc(f.razonSocial)}', '${esc(f.telefono)}', '${esc(f.producto)}', ${f.cantidad}, '${esc(f.unidad)}', ${f.precioUnitario}, ${f.subtotal}, '${esc(f.clienteDestino)}', '${esc(f.condicionPago)}', '${esc(f.observaciones)}');`
-    );
-  });
-
-  const blob = new Blob([lineasSQL.join("\n")], { type: "application/sql;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const desde = document.getElementById("sqlFechaDesde")?.value || estado.fecha;
-  const hasta = document.getElementById("sqlFechaHasta")?.value || estado.fecha;
-  a.href = url;
-  a.download = `BaseDatos_AgroGestion_${desde}_a_${hasta}.sql`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  mostrarToast("🗄️ Archivo de Base de Datos SQL (.sql) descargado");
 };
 
 // 📧 ENVIAR REPORTE CONSOLIDADO POR OUTLOOK CORPORATIVO
@@ -5402,9 +5168,9 @@ window.enviarReporteHistoricoOutlook = function() {
     return `• [${f.fecha} | ${f.usuarioNombre}] ${f.Aliado} -> ${f.producto}: ${fmtMiles(f.cantidad)} ${f.unidad} x $ ${fmtMiles(f.precioUnitario)} = $ ${fmtMiles(f.subtotal)} (Destino: ${f.clienteDestino})`;
   });
 
-  const asunto = `REPORTE OFICIAL DE COMPRAS AGROGESTIÓN (${desde} a ${hasta}) - ${PERFILES[estado.perfilActivo].nombre}`;
+  const asunto = `REPORTE OFICIAL DE COMPRAS MAKAND (${desde} a ${hasta}) - ${PERFILES[estado.perfilActivo].nombre}`;
   const cuerpo = [
-    `ACTA CONSOLIDADA DE COMPRAS Y DESPACHOS - AGROGESTIÓN PRO`,
+    `MAKAND · ACTA CONSOLIDADA DE COMPRAS Y DESPACHOS`,
     `Rango reportado: ${desde} a ${hasta}`,
     `Generado desde el perfil: ${PERFILES[estado.perfilActivo].nombre}`,
     `Total Registros: ${fmtMiles(filas.length)}`,
@@ -5491,5 +5257,5 @@ window.importarArchivosAlHistoricoSQL = async function(event) {
   renderizarPedidosDelDia();
   renderizarSemaforoCobertura();
   renderizarTablaHistoricoSQL();
-  mostrarToast(`📥 Se unificaron ${fmtMiles(pedidosAgregados)} registros en la Base SQL y se sincronizaron en la nube.`);
+  mostrarToast(`📥 Se unificaron ${fmtMiles(pedidosAgregados)} registros al histórico y se sincronizaron en la nube.`);
 };

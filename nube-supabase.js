@@ -36,6 +36,12 @@
       if (error) throw new Error(error.message);
     },
 
+    // Solo Gerencia: cambia la contraseña de OTRO perfil (función SQL admin_cambiar_clave, ver supabase_gestor_claves.sql)
+    async cambiarClaveDe(perfilId, clave) {
+      const { error } = await sb.rpc("admin_cambiar_clave", { p_perfil: perfilId, p_clave: clave });
+      if (error) throw new Error(error.message);
+    },
+
     async logout() {
       try { await sb.auth.signOut(); } catch (e) {}
     }
